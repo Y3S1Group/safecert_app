@@ -43,6 +43,10 @@ export default function RootLayout() {
     const inOnboardingGroup = segments[0] === "(onboarding)";
     const inTabsGroup = segments[0] === "(tabs)";
 
+    const allowedRoutes = ['createIncident', 'incidents'];
+    const currentRoute = segments[0];
+    const isAllowedRoute = allowedRoutes.includes(currentRoute);
+
     // First time user - redirect to onboarding
     if (isFirstLaunch && !inOnboardingGroup) {
       router.replace("/(onboarding)");
@@ -59,7 +63,7 @@ export default function RootLayout() {
     }
 
     // User is logged in - redirect to tabs if not already there
-    if (user && !inTabsGroup) {
+    if (user && !inTabsGroup && !isAllowedRoute) {
       router.replace("/(tabs)");
     }
   }, [user, segments, loading, isFirstLaunch]);
