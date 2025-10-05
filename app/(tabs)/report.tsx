@@ -1,525 +1,822 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image } from 'react-native'
-import React, { useState } from 'react'
+import { auth, db } from '@/config/firebaseConfig'
+import { useRouter } from 'expo-router'
+import { collection, deleteDoc, doc, onSnapshot, orderBy, query, updateDoc, where } from 'firebase/firestore'
+import { AlertTriangle, Clock, Edit, Eye, Filter, MapPin, Plus, Search, Trash2, TrendingUp, FileText, Image as ImageIcon, Video } from 'lucide-react-native'
+import React, { useEffect, useState } from 'react'
+import { Alert, FlatList, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { AlertTriangle, MapPin, Camera, Check, X } from 'lucide-react-native'
-import * as ImagePicker from 'expo-image-picker'
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { auth, db, storage } from '@/config/firebaseConfig'
 
-interface SelectedImage {
-  uri: string;
+interface Incident {
   id: string;
+  incidentType: string;
+  location: string;
+  description: string;
+  imageUrls: string[];
+  videoUrls?: string[];
+  coordinates?: {
+    latitude: number;
+    longitude: number;
+  };
+  status: 'pending' | 'investigating' | 'resolved' | 'closed';
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  reportedBy: string;
+  reportedByUid: string;
+  createdAt: any;
+  updatedAt: any;
 }
 
 export default function Reports() {
-  const [submitted, setSubmitted] = useState(false)
-  const [incidentType, setIncidentType] = useState('')
-  const [location, setLocation] = useState('')
-  const [description, setDescription] = useState('')
-  const [selectedImages, setSelectedImages] = useState<SelectedImage[]>([])
-  const [uploading, setUploading] = useState(false)
+  const router = useRouter()
+  const [activeTab, setActiveTab] = useState<'create' | 'list' | 'analytics'>('list')
+  const [incidents, setIncidents] = useState<Incident[]>([])
+  const [filteredIncidents, setFilteredIncidents] = useState<Incident[]>([])
+  const [filterStatus, setFilterStatus] = useState<string>('all')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [loading, setLoading] = useState(true)
 
-  const incidentTypes = ['Injury', 'Near Miss', 'Hazard', 'Equipment Failure']
+  useEffect(() => {
+    if (!auth.currentUser) return
 
-  const pickImage = async () => {
-    try {
-      // Request permission
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
-      if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Camera roll permission is required to upload images')
-        return
-      }
+    const q = query(
+      collection(db, 'incidents'),
+      where('reportedByUid', '==', auth.currentUser.uid),
+      orderBy('createdAt', 'desc')
+    )
 
-      // Launch image picker
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const incidentsList: Incident[] = []
+      snapshot.forEach((doc) => {
+        incidentsList.push({ id: doc.id, ...doc.data() } as Incident)
       })
+      setIncidents(incidentsList)
+      setFilteredIncidents(incidentsList)
+      setLoading(false)
+    })
 
-      if (!result.canceled && result.assets[0]) {
-        const newImage: SelectedImage = {
-          uri: result.assets[0].uri,
-          id: Date.now().toString()
-        }
-        setSelectedImages(prev => [...prev, newImage])
-      }
-    } catch (error) {
-      console.error('Error picking image:', error)
-      Alert.alert('Error', 'Failed to pick image')
+    return () => unsubscribe()
+  }, [])
+
+  useEffect(() => {
+    let filtered = incidents
+
+    if (filterStatus !== 'all') {
+      filtered = filtered.filter(incident => incident.status === filterStatus)
     }
-  }
 
-  const takePhoto = async () => {
-    try {
-      // Request permission
-      const { status } = await ImagePicker.requestCameraPermissionsAsync()
-      if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Camera permission is required to take photos')
-        return
-      }
-
-      // Launch camera
-      const result = await ImagePicker.launchCameraAsync({
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
-      })
-
-      if (!result.canceled && result.assets[0]) {
-        const newImage: SelectedImage = {
-          uri: result.assets[0].uri,
-          id: Date.now().toString()
-        }
-        setSelectedImages(prev => [...prev, newImage])
-      }
-    } catch (error) {
-      console.error('Error taking photo:', error)
-      Alert.alert('Error', 'Failed to take photo')
+    if (searchQuery) {
+      filtered = filtered.filter(incident => 
+        incident.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        incident.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        incident.incidentType.toLowerCase().includes(searchQuery.toLowerCase())
+      )
     }
-  }
 
-  const removeImage = (imageId: string) => {
-    setSelectedImages(prev => prev.filter(img => img.id !== imageId))
-  }
+    setFilteredIncidents(filtered)
+  }, [incidents, filterStatus, searchQuery])
 
-  const showImagePickerOptions = () => {
+  const handleDeleteIncident = async (incidentId: string) => {
     Alert.alert(
-      'Add Photo',
-      'Choose an option',
+      'Delete Report',
+      'Are you sure you want to delete this incident report? This action cannot be undone.',
       [
-        { text: 'Camera', onPress: takePhoto },
-        { text: 'Gallery', onPress: pickImage },
-        { text: 'Cancel', style: 'cancel' }
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteDoc(doc(db, 'incidents', incidentId))
+              Alert.alert('Success', 'Report deleted successfully')
+            } catch (error) {
+              console.error('Error deleting incident:', error)
+              Alert.alert('Error', 'Failed to delete report')
+            }
+          }
+        }
       ]
     )
   }
 
-  const uploadImageToStorage = async (imageUri: string, fileName: string): Promise<string> => {
+  const handleUpdateStatus = async (incidentId: string, newStatus: string) => {
     try {
-      // Fetch the image
-      const response = await fetch(imageUri)
-      const blob = await response.blob()
-
-      // Create storage reference
-      const imageRef = ref(storage, `incident-images/${fileName}`)
-      
-      // Upload image
-      await uploadBytes(imageRef, blob)
-      
-      // Get download URL
-      const downloadURL = await getDownloadURL(imageRef)
-      return downloadURL
+      await updateDoc(doc(db, 'incidents', incidentId), {
+        status: newStatus,
+        updatedAt: new Date()
+      })
+      Alert.alert('Success', `Status updated to ${newStatus}`)
     } catch (error) {
-      console.error('Error uploading image:', error)
-      throw error
+      console.error('Error updating status:', error)
+      Alert.alert('Error', 'Failed to update status')
     }
   }
 
-  const handleSubmit = async () => {
-    if (!incidentType || !location.trim() || !description.trim()) {
-      Alert.alert('Error', 'Please fill in all required fields')
-      return
-    }
-
-    if (!auth.currentUser) {
-      Alert.alert('Error', 'You must be logged in to submit a report')
-      return
-    }
-
-    setUploading(true)
-
-    try {
-      // Upload images to Firebase Storage
-      const imageUrls: string[] = []
-      for (const image of selectedImages) {
-        const fileName = `${Date.now()}_${image.id}.jpg`
-        const downloadURL = await uploadImageToStorage(image.uri, fileName)
-        imageUrls.push(downloadURL)
-      }
-
-      // Save incident to Firestore
-      const incidentData = {
-        incidentType,
-        location: location.trim(),
-        description: description.trim(),
-        imageUrls,
-        reportedBy: auth.currentUser.email,
-        reportedByUid: auth.currentUser.uid,
-        status: 'pending',
-        createdAt: serverTimestamp(),
-      }
-
-      await addDoc(collection(db, 'incidents'), incidentData)
-
-      setSubmitted(true)
-    } catch (error) {
-      console.error('Error submitting report:', error)
-      Alert.alert('Error', 'Failed to submit report. Please try again.')
-    } finally {
-      setUploading(false)
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending': return '#F59E0B'
+      case 'investigating': return '#3B82F6'
+      case 'resolved': return '#10B981'
+      case 'closed': return '#6B7280'
+      default: return '#6B7280'
     }
   }
 
-  const handleSubmitAnother = () => {
-    setSubmitted(false)
-    setIncidentType('')
-    setLocation('')
-    setDescription('')
-    setSelectedImages([])
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'critical': return '#EF4444'
+      case 'high': return '#F97316'
+      case 'medium': return '#F59E0B'
+      case 'low': return '#10B981'
+      default: return '#6B7280'
+    }
   }
 
-  if (submitted) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.successContainer}>
-          <View style={styles.successIcon}>
-            <Check size={48} color="#FFFFFF" />
+  const renderIncidentCard = ({ item }: { item: Incident }) => (
+    <TouchableOpacity 
+      style={styles.incidentCard}
+      onPress={() => router.push(`/incidents/${item.id}` as any)}
+      activeOpacity={0.7}
+    >
+      {/* Priority indicator bar */}
+      <View style={[styles.priorityBar, { backgroundColor: getPriorityColor(item.priority) }]} />
+      
+      <View style={styles.cardContent}>
+        {/* Header with status and priority */}
+        <View style={styles.cardHeader}>
+          <View style={styles.badgeContainer}>
+            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
+              <View style={[styles.statusDot, { backgroundColor: getStatusColor(item.status) }]} />
+              <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
+                {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+              </Text>
+            </View>
+            <View style={[styles.priorityBadge, { borderColor: getPriorityColor(item.priority) }]}>
+              <Text style={[styles.priorityText, { color: getPriorityColor(item.priority) }]}>
+                {item.priority.toUpperCase()}
+              </Text>
+            </View>
           </View>
-          <Text style={styles.successTitle}>Report Submitted</Text>
-          <Text style={styles.successMessage}>
-            Thank you for reporting this incident. A safety officer will follow up shortly.
-          </Text>
-          <TouchableOpacity style={styles.submitAnotherButton} onPress={handleSubmitAnother}>
-            <Text style={styles.submitAnotherButtonText}>Submit Another Report</Text>
+        </View>
+
+        {/* Incident Type */}
+        <Text style={styles.cardTitle} numberOfLines={1}>{item.incidentType}</Text>
+
+        {/* Location */}
+        <View style={styles.locationContainer}>
+          <MapPin size={14} color="#6B7280" />
+          <Text style={styles.locationText} numberOfLines={1}>{item.location}</Text>
+        </View>
+
+        {/* Description */}
+        <Text style={styles.descriptionText} numberOfLines={2}>
+          {item.description}
+        </Text>
+
+        {/* Footer with metadata */}
+        <View style={styles.cardFooter}>
+          <View style={styles.metaContainer}>
+            <Clock size={12} color="#9CA3AF" />
+            <Text style={styles.metaText}>
+              {item.createdAt?.toDate?.()?.toLocaleDateString('en-US', { 
+                month: 'short', 
+                day: 'numeric' 
+              }) || 'Recent'}
+            </Text>
+          </View>
+          
+          <View style={styles.attachmentsContainer}>
+            {item.imageUrls && item.imageUrls.length > 0 && (
+              <View style={styles.attachmentBadge}>
+                <ImageIcon size={12} color="#6B7280" />
+                <Text style={styles.attachmentCount}>{item.imageUrls.length}</Text>
+              </View>
+            )}
+            {item.videoUrls && item.videoUrls.length > 0 && (
+              <View style={styles.attachmentBadge}>
+                <Video size={12} color="#6B7280" />
+                <Text style={styles.attachmentCount}>{item.videoUrls.length}</Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Action buttons */}
+        <View style={styles.cardActions}>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={(e) => {
+              e.stopPropagation()
+              router.push(`/incidents/${item.id}` as any)
+            }}
+          >
+            <Eye size={16} color="#6B7280" />
+            <Text style={styles.actionText}>View</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={(e) => {
+              e.stopPropagation()
+              router.push(`/incidents/edit/${item.id}` as any)
+            }}
+          >
+            <Edit size={16} color="#6B7280" />
+            <Text style={styles.actionText}>Edit</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.actionButton, styles.deleteButton]}
+            onPress={(e) => {
+              e.stopPropagation()
+              handleDeleteIncident(item.id)
+            }}
+          >
+            <Trash2 size={16} color="#EF4444" />
+            <Text style={[styles.actionText, styles.deleteText]}>Delete</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
-    )
+      </View>
+    </TouchableOpacity>
+  )
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'create':
+        return (
+          <View style={styles.emptyStateContainer}>
+            <View style={styles.iconCircle}>
+              <Plus size={32} color="#FF6B35" />
+            </View>
+            <Text style={styles.emptyStateTitle}>Create New Report</Text>
+            <Text style={styles.emptyStateDescription}>
+              Document incidents and issues quickly with our easy-to-use reporting system
+            </Text>
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={() => {
+                console.log('=== CREATE BUTTON PRESSED ===')
+                console.log('Current route:', router)
+                console.log('Attempting to navigate to: /createIncident')
+
+                try {
+                  router.push('/incidents/new')
+                  console.log('Navigation called successfully')
+                } catch (error) {
+                  console.error('Navigation error:', error)
+                }
+              }}
+            >
+              <Plus size={20} color="#FFFFFF" />
+              <Text style={styles.primaryButtonText}>Create Incident Report</Text>
+            </TouchableOpacity>
+          </View>
+        )
+
+      case 'list':
+        return (
+          <View style={styles.listContainer}>
+            {/* Search Bar */}
+            <View style={styles.searchWrapper}>
+              <View style={styles.searchContainer}>
+                <Search size={18} color="#9CA3AF" />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search by location, type, or description..."
+                  placeholderTextColor="#9CA3AF"
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchQuery('')}>
+                    <Text style={styles.clearButton}>×</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+
+            {/* Status Filter Pills */}
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false} 
+              style={styles.filterScroll}
+              contentContainerStyle={styles.filterContent}
+            >
+              {[
+                { key: 'all', label: 'All', count: incidents.length },
+                { key: 'pending', label: 'Pending', count: incidents.filter(i => i.status === 'pending').length },
+                { key: 'investigating', label: 'In Progress', count: incidents.filter(i => i.status === 'investigating').length },
+                { key: 'resolved', label: 'Resolved', count: incidents.filter(i => i.status === 'resolved').length },
+                { key: 'closed', label: 'Closed', count: incidents.filter(i => i.status === 'closed').length },
+              ].map((filter) => (
+                <TouchableOpacity
+                  key={filter.key}
+                  style={[
+                    styles.filterPill,
+                    filterStatus === filter.key && styles.filterPillActive
+                  ]}
+                  onPress={() => setFilterStatus(filter.key)}
+                >
+                  <Text style={[
+                    styles.filterPillText,
+                    filterStatus === filter.key && styles.filterPillTextActive
+                  ]}>
+                    {filter.label}
+                  </Text>
+                  <View style={[
+                    styles.filterCount,
+                    filterStatus === filter.key && styles.filterCountActive
+                  ]}>
+                    <Text style={[
+                      styles.filterCountText,
+                      filterStatus === filter.key && styles.filterCountTextActive
+                    ]}>
+                      {filter.count}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {/* Results count */}
+            {searchQuery.length > 0 && (
+              <View style={styles.resultsHeader}>
+                <Text style={styles.resultsText}>
+                  {filteredIncidents.length} {filteredIncidents.length === 1 ? 'result' : 'results'} found
+                </Text>
+              </View>
+            )}
+
+            {/* Incidents List */}
+            <FlatList
+              data={filteredIncidents}
+              renderItem={renderIncidentCard}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={false}
+              style={{ marginTop: 0 }}
+              ListEmptyComponent={
+                <View style={styles.emptyStateContainer}>
+                  <View style={styles.iconCircle}>
+                    <FileText size={32} color="#D1D5DB" />
+                  </View>
+                  <Text style={styles.emptyStateTitle}>
+                    {searchQuery ? 'No results found' : 'No incident reports'}
+                  </Text>
+                  <Text style={styles.emptyStateDescription}>
+                    {searchQuery 
+                      ? 'Try adjusting your search or filters' 
+                      : 'Create your first incident report to get started'}
+                  </Text>
+                  {!searchQuery && (
+                    <TouchableOpacity
+                      style={styles.secondaryButton}
+                      onPress={() => setActiveTab('create')}
+                    >
+                      <Plus size={18} color="#FF6B35" />
+                      <Text style={styles.secondaryButtonText}>Create Report</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              }
+            />
+          </View>
+        )
+
+      case 'analytics':
+        return (
+          <View style={styles.emptyStateContainer}>
+            <View style={styles.iconCircle}>
+              <TrendingUp size={32} color="#1B365D" />
+            </View>
+            <Text style={styles.emptyStateTitle}>Analytics Dashboard</Text>
+            <Text style={styles.emptyStateDescription}>
+              View detailed insights and statistics about your incident reports
+            </Text>
+            <TouchableOpacity 
+              style={[styles.primaryButton, { backgroundColor: '#1B365D' }]}
+              onPress={() => router.push('/incidents/analytics')}
+            >
+              <TrendingUp size={20} color="#FFFFFF" />
+              <Text style={styles.primaryButtonText}>View Analytics</Text>
+            </TouchableOpacity>
+          </View>
+        )
+
+      default:
+        return null
+    }
   }
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {/* Alert Banner */}
-        <View style={styles.alertBanner}>
-          <AlertTriangle size={24} color="#B03A2E" style={styles.alertIcon} />
-          <View style={styles.alertContent}>
-            <Text style={styles.alertTitle}>Report Safety Incidents Immediately</Text>
-            <Text style={styles.alertMessage}>Your report helps prevent future accidents.</Text>
-          </View>
-        </View>
-
-        {/* Form */}
-        <View style={styles.form}>
-          {/* Incident Type */}
-          <View style={styles.formGroup}>
-            <Text style={styles.formLabel}>Incident Type*</Text>
-            <View style={styles.incidentTypeGrid}>
-              {incidentTypes.map((type) => (
-                <TouchableOpacity
-                  key={type}
-                  style={[
-                    styles.incidentTypeButton,
-                    incidentType === type ? styles.incidentTypeButtonActive : styles.incidentTypeButtonInactive
-                  ]}
-                  onPress={() => setIncidentType(type)}
-                >
-                  <Text style={[
-                    styles.incidentTypeButtonText,
-                    incidentType === type ? styles.incidentTypeButtonTextActive : styles.incidentTypeButtonTextInactive
-                  ]}>
-                    {type}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          {/* Location */}
-          <View style={styles.formGroup}>
-            <Text style={styles.formLabel}>Location*</Text>
-            <View style={styles.inputContainer}>
-              <MapPin size={20} color="#6B7280" style={styles.inputIcon} />
-              <TextInput
-                style={styles.textInput}
-                placeholder="Building A, Floor 2, Room 201"
-                placeholderTextColor="#9CA3AF"
-                value={location}
-                onChangeText={setLocation}
-              />
-            </View>
-          </View>
-
-          {/* Description */}
-          <View style={styles.formGroup}>
-            <Text style={styles.formLabel}>Description*</Text>
-            <TextInput
-              style={styles.textArea}
-              placeholder="Describe what happened..."
-              placeholderTextColor="#9CA3AF"
-              multiline
-              numberOfLines={6}
-              textAlignVertical="top"
-              value={description}
-              onChangeText={setDescription}
-            />
-          </View>
-
-          {/* Photo Upload */}
-          <View style={styles.formGroup}>
-            <Text style={styles.formLabel}>Add Photos</Text>
-            <TouchableOpacity style={styles.photoUploadButton} onPress={showImagePickerOptions}>
-              <Camera size={24} color="#6B7280" />
-              <Text style={styles.photoUploadText}>Take Photo or Upload</Text>
-            </TouchableOpacity>
-
-            {/* Display selected images */}
-            {selectedImages.length > 0 && (
-              <View style={styles.imagePreviewContainer}>
-                {selectedImages.map((image) => (
-                  <View key={image.id} style={styles.imagePreview}>
-                    <Image source={{ uri: image.uri }} style={styles.previewImage} />
-                    <TouchableOpacity
-                      style={styles.removeImageButton}
-                      onPress={() => removeImage(image.id)}
-                    >
-                      <X size={16} color="#FFFFFF" />
-                    </TouchableOpacity>
-                  </View>
-                ))}
+      {/* Enhanced Tab Navigation */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Incident Reports</Text>
+        <View style={styles.tabContainer}>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'list' && styles.activeTab]}
+            onPress={() => setActiveTab('list')}
+          >
+            <FileText size={18} color={activeTab === 'list' ? '#FF6B35' : '#9CA3AF'} />
+            <Text style={[styles.tabText, activeTab === 'list' && styles.activeTabText]}>
+              Reports
+            </Text>
+            {incidents.length > 0 && (
+              <View style={styles.tabBadge}>
+                <Text style={styles.tabBadgeText}>{incidents.length}</Text>
               </View>
             )}
-          </View>
+          </TouchableOpacity>
 
-          {/* Submit Button */}
-          <TouchableOpacity 
-            style={[styles.submitButton, uploading && styles.submitButtonDisabled]} 
-            onPress={handleSubmit}
-            disabled={uploading}
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'create' && styles.activeTab]}
+            onPress={() => setActiveTab('create')}
           >
-            <AlertTriangle size={24} color="#FFFFFF" style={styles.submitButtonIcon} />
-            <Text style={styles.submitButtonText}>
-              {uploading ? 'Submitting...' : 'Submit Incident Report'}
+            <Plus size={18} color={activeTab === 'create' ? '#FF6B35' : '#9CA3AF'} />
+            <Text style={[styles.tabText, activeTab === 'create' && styles.activeTabText]}>
+              Create
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'analytics' && styles.activeTab]}
+            onPress={() => setActiveTab('analytics')}
+          >
+            <TrendingUp size={18} color={activeTab === 'analytics' ? '#FF6B35' : '#9CA3AF'} />
+            <Text style={[styles.tabText, activeTab === 'analytics' && styles.activeTabText]}>
+              Analytics
             </Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
+      </View>
+
+      {/* Content */}
+      <View style={styles.content}>
+        {renderTabContent()}
+      </View>
     </SafeAreaView>
   )
 }
 
-// Add these new styles to your existing styles:
 const styles = StyleSheet.create({
-  // ... your existing styles ...
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
   },
-  scrollView: {
-    flex: 1,
+  header: {
+    backgroundColor: '#FFFFFF',
+    paddingTop: 8,
+    paddingBottom: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
-  scrollContent: {
-    padding: 16,
-    paddingTop: 40,
-    paddingBottom: 100,
-  },
-  successContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-  },
-  successIcon: {
-    backgroundColor: '#2E86C1',
-    borderRadius: 50,
-    width: 100,
-    height: 100,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  successTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '700',
     color: '#111827',
-    marginBottom: 12,
-    textAlign: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 16,
   },
-  successMessage: {
-    fontSize: 18,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 32,
-    lineHeight: 26,
+  tabContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 12,
   },
-  submitAnotherButton: {
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 3,
+    borderBottomColor: 'transparent',
+    gap: 6,
+  },
+  activeTab: {
+    borderBottomColor: '#FF6B35',
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#9CA3AF',
+  },
+  activeTabText: {
+    color: '#FF6B35',
+  },
+  tabBadge: {
     backgroundColor: '#FF6B35',
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 12,
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    minWidth: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  submitAnotherButtonText: {
+  tabBadgeText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  content: {
+    flex: 1,
+  },
+  listContainer: {
+    flex: 1,
+  },
+  searchWrapper: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
+    backgroundColor: '#FFFFFF',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 15,
+    color: '#111827',
+  },
+  clearButton: {
+    fontSize: 24,
+    color: '#9CA3AF',
+    paddingHorizontal: 4,
+  },
+  filterScroll: {
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+    maxHeight: 60,
+  },
+  filterContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 8,
+  },
+  filterPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    paddingHorizontal: 14,
+    height: 36,
+    borderRadius: 20,
+    marginRight: 8,
+    gap: 6,
+  },
+  filterPillActive: {
+    backgroundColor: '#FF6B35',
+  },
+  filterPillText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  filterPillTextActive: {
+    color: '#FFFFFF',
+  },
+  filterCount: {
+    backgroundColor: '#E5E7EB',
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    minWidth: 20,
+    alignItems: 'center',
+  },
+  filterCountActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  filterCountText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#6B7280',
+  },
+  filterCountTextActive: {
+    color: '#FFFFFF',
+  },
+  resultsHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#F9FAFB',
+  },
+  resultsText: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  listContent: {
+    padding: 16,
+    flexGrow: 1,
+  },
+  incidentCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    marginBottom: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  priorityBar: {
+    height: 4,
+    width: '100%',
+  },
+  cardContent: {
+    padding: 16,
+  },
+  cardHeader: {
+    marginBottom: 12,
+  },
+  badgeContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 6,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  statusText: {
+    fontSize: 12,
     fontWeight: '600',
   },
-  alertBanner: {
-    backgroundColor: 'rgba(176, 58, 46, 0.1)',
-    borderRadius: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: '#B03A2E',
-    padding: 16,
-    flexDirection: 'row',
-    marginBottom: 24,
+  priorityBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1.5,
   },
-  alertIcon: {
-    marginRight: 12,
-    marginTop: 2,
+  priorityText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
-  alertContent: {
-    flex: 1,
-  },
-  alertTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+  cardTitle: {
+    fontSize: 17,
+    fontWeight: '700',
     color: '#111827',
-    marginBottom: 4,
+    marginBottom: 8,
   },
-  alertMessage: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  form: {
-    flex: 1,
-  },
-  formGroup: {
-    marginBottom: 24,
-  },
-  formLabel: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 12,
-  },
-  incidentTypeGrid: {
+  locationContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  incidentTypeButton: {
-    width: '48%',
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    borderWidth: 2,
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-    minHeight: 56,
+    marginBottom: 10,
+    gap: 4,
   },
-  incidentTypeButtonActive: {
-    borderColor: '#FF6B35',
-    backgroundColor: 'rgba(255, 107, 53, 0.1)',
-  },
-  incidentTypeButtonInactive: {
-    borderColor: '#D1D5DB',
-    backgroundColor: '#FFFFFF',
-  },
-  incidentTypeButtonText: {
-    fontSize: 16,
+  locationText: {
+    fontSize: 13,
+    color: '#6B7280',
     fontWeight: '500',
-    textAlign: 'center',
-  },
-  incidentTypeButtonTextActive: {
-    color: '#FF6B35',
-    fontWeight: 'bold',
-  },
-  incidentTypeButtonTextInactive: {
-    color: '#6B7280',
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#D1D5DB',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    height: 56,
-  },
-  inputIcon: {
-    marginRight: 12,
-  },
-  textInput: {
     flex: 1,
-    fontSize: 16,
-    color: '#111827',
   },
-  textArea: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#D1D5DB',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: '#111827',
-    minHeight: 120,
-  },
-  photoUploadButton: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#D1D5DB',
-    borderStyle: 'dashed',
-    borderRadius: 12,
-    paddingVertical: 24,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    minHeight: 80,
-  },
-  photoUploadText: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginLeft: 8,
-  },
-  imagePreviewContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 12,
-  },
-  imagePreview: {
-    position: 'relative',
-    marginRight: 12,
+  descriptionText: {
+    fontSize: 14,
+    color: '#4B5563',
+    lineHeight: 20,
     marginBottom: 12,
   },
-  previewImage: {
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    marginBottom: 12,
+  },
+  metaContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  metaText: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    fontWeight: '500',
+  },
+  attachmentsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  attachmentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
+  },
+  attachmentCount: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontWeight: '600',
+  },
+  cardActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F9FAFB',
+    paddingVertical: 10,
+    borderRadius: 10,
+    gap: 6,
+  },
+  deleteButton: {
+    backgroundColor: '#FEF2F2',
+  },
+  actionText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  deleteText: {
+    color: '#EF4444',
+  },
+  emptyStateContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+    paddingVertical: 48,
+  },
+  iconCircle: {
     width: 80,
     height: 80,
-    borderRadius: 8,
-  },
-  removeImageButton: {
-    position: 'absolute',
-    top: -8,
-    right: -8,
-    backgroundColor: '#EF4444',
-    borderRadius: 12,
-    width: 24,
-    height: 24,
+    borderRadius: 40,
+    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 20,
   },
-  submitButton: {
-    backgroundColor: '#B03A2E',
-    paddingVertical: 16,
-    borderRadius: 12,
+  emptyStateTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyStateDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  primaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
+    backgroundColor: '#FF6B35',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  submitButtonDisabled: {
-    backgroundColor: '#9CA3AF',
-  },
-  submitButtonIcon: {
-    marginRight: 8,
-  },
-  submitButtonText: {
+  primaryButtonText: {
     color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  secondaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFF5F2',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#FF6B35',
+    gap: 8,
+  },
+  secondaryButtonText: {
+    color: '#FF6B35',
+    fontSize: 16,
+    fontWeight: '700',
   },
 })
