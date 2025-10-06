@@ -98,7 +98,7 @@ export default function Home() {
       icon: AlertTriangle,
       color: '#B03A2E',
       bgColor: 'rgba(176, 58, 46, 0.1)',
-      onPress: () => router.push('/incidents/createIncident' as any)
+      onPress: () => router.push('/incidents/new' as any)
     },
     {
       id: 'profile',
