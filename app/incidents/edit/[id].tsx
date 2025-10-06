@@ -1,17 +1,24 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image } from 'react-native'
 import React, { useState, useEffect } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { ArrowLeft, MapPin, Camera, X, Save } from 'lucide-react-native'
+import { ArrowLeft, MapPin, Camera, X, Save, ChevronLeft, FileText, MapPinned } from 'lucide-react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '@/config/firebaseConfig'
 import * as ImagePicker from 'expo-image-picker'
+import * as Location from 'expo-location'
 import { UploadImageToClooudinary } from '@/config/cloudinaryConfig'
 
 interface SelectedMedia {
   uri: string;
   id: string;
   isNew: boolean;
+}
+
+interface LocationData {
+  latitude: number;
+  longitude: number;
+  address?: string;
 }
 
 export default function EditIncident() {
@@ -23,12 +30,23 @@ export default function EditIncident() {
   const [priority, setPriority] = useState<'low' | 'medium' | 'high' | 'critical'>('medium')
   const [status, setStatus] = useState<'pending' | 'investigating' | 'resolved' | 'closed'>('pending')
   const [selectedImages, setSelectedImages] = useState<SelectedMedia[]>([])
+  const [currentLocation, setCurrentLocation] = useState<LocationData | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
   const incidentTypes = ['Injury', 'Near Miss', 'Hazard', 'Equipment Failure', 'Property Damage', 'Environmental']
-  const priorities = ['low', 'medium', 'high', 'critical']
-  const statuses = ['pending', 'investigating', 'resolved', 'closed']
+  const priorities = [
+    { key: 'low', label: 'Low' },
+    { key: 'medium', label: 'Medium' },
+    { key: 'high', label: 'High' },
+    { key: 'critical', label: 'Critical' }
+  ]
+  const statuses = [
+    { key: 'pending', label: 'Pending' },
+    { key: 'investigating', label: 'Investigating' },
+    { key: 'resolved', label: 'Resolved' },
+    { key: 'closed', label: 'Closed' }
+  ]
 
   useEffect(() => {
     fetchIncident()
@@ -47,7 +65,6 @@ export default function EditIncident() {
         setPriority(data.priority)
         setStatus(data.status)
         
-        // Load existing images
         if (data.imageUrls && data.imageUrls.length > 0) {
           const existingImages = data.imageUrls.map((url: string, index: number) => ({
             uri: url,
@@ -99,7 +116,7 @@ export default function EditIncident() {
 
   const takePhoto = async () => {
     try {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync()
+      const { status} = await ImagePicker.requestCameraPermissionsAsync()
       if (status !== 'granted') {
         Alert.alert('Permission needed', 'Camera permission is required')
         return
@@ -134,8 +151,8 @@ export default function EditIncident() {
       'Add Photo',
       'Choose an option',
       [
-        { text: 'Camera', onPress: takePhoto },
-        { text: 'Gallery', onPress: pickImage },
+        { text: 'Take Photo', onPress: takePhoto },
+        { text: 'Photo Library', onPress: pickImage },
         { text: 'Cancel', style: 'cancel' }
       ]
     )
@@ -150,7 +167,6 @@ export default function EditIncident() {
     setSaving(true)
 
     try {
-      // Upload new images to Cloudinary
       const newImages = selectedImages.filter(img => img.isNew)
       const existingImages = selectedImages.filter(img => !img.isNew)
       
@@ -164,13 +180,11 @@ export default function EditIncident() {
         }
       }
 
-      // Combine existing and new image URLs
       const allImageUrls = [
         ...existingImages.map(img => img.uri),
         ...newImageUrls
       ]
 
-      // Update incident in Firestore
       const docRef = doc(db, 'incidents', id as string)
       await updateDoc(docRef, {
         incidentType,
@@ -194,7 +208,7 @@ export default function EditIncident() {
     }
   }
 
-  const getPriorityColor = (p: string) => {
+  const getPriorityColor = (p: string): string => {
     switch (p) {
       case 'critical': return '#EF4444'
       case 'high': return '#F97316'
@@ -204,46 +218,61 @@ export default function EditIncident() {
     }
   }
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading...</Text>
-        </View>
-      </SafeAreaView>
-    )
+  const getStatusColor = (s: string): string => {
+    switch (s) {
+      case 'pending': return '#F59E0B'
+      case 'investigating': return '#3B82F6'
+      case 'resolved': return '#10B981'
+      case 'closed': return '#6B7280'
+      default: return '#6B7280'
+    }
   }
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <ArrowLeft size={24} color="#111827" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Edit Incident Report</Text>
-          <View style={{ width: 24 }} />
+      {/* Fixed Header */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <ChevronLeft size={24} style={styles.backButton} />
+        </TouchableOpacity>
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle}>Edit Report</Text>
         </View>
+        <View style={styles.headerIcon}>
+          <FileText size={24} color="#FF6B35" />
+        </View>
+      </View>
 
-        {/* Form */}
-        <View style={styles.form}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Form Section */}
+        <View style={styles.formSection}>
           {/* Incident Type */}
           <View style={styles.formGroup}>
-            <Text style={styles.formLabel}>Incident Type*</Text>
+            <View style={styles.labelContainer}>
+              <Text style={styles.formLabel}>
+                Incident Type <Text style={styles.required}>*</Text>
+              </Text>
+            </View>
             <View style={styles.incidentTypeGrid}>
               {incidentTypes.map((type) => (
                 <TouchableOpacity
                   key={type}
                   style={[
                     styles.incidentTypeButton,
-                    incidentType === type ? styles.incidentTypeButtonActive : styles.incidentTypeButtonInactive
+                    incidentType === type && styles.incidentTypeButtonActive
                   ]}
                   onPress={() => setIncidentType(type)}
                 >
                   <Text style={[
                     styles.incidentTypeButtonText,
-                    incidentType === type ? styles.incidentTypeButtonTextActive : styles.incidentTypeButtonTextInactive
+                    incidentType === type && styles.incidentTypeButtonTextActive
                   ]}>
                     {type}
                   </Text>
@@ -252,76 +281,142 @@ export default function EditIncident() {
             </View>
           </View>
 
-          {/* Status */}
-          <View style={styles.formGroup}>
-            <Text style={styles.formLabel}>Status*</Text>
-            <View style={styles.priorityContainer}>
-              {statuses.map((s) => (
-                <TouchableOpacity
-                  key={s}
-                  style={[
-                    styles.statusButton,
-                    status === s && styles.statusButtonActive
-                  ]}
-                  onPress={() => setStatus(s as any)}
-                >
-                  <Text style={[
-                    styles.statusButtonText,
-                    status === s && styles.statusButtonTextActive
-                  ]}>
-                    {s.charAt(0).toUpperCase() + s.slice(1)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
           {/* Priority */}
           <View style={styles.formGroup}>
-            <Text style={styles.formLabel}>Priority*</Text>
-            <View style={styles.priorityContainer}>
+            <View style={styles.labelContainer}>
+              <Text style={styles.formLabel}>
+                Priority <Text style={styles.required}>*</Text>
+              </Text>
+            </View>
+            <View style={styles.priorityGrid}>
               {priorities.map((p) => (
                 <TouchableOpacity
-                  key={p}
+                  key={p.key}
                   style={[
                     styles.priorityButton,
-                    priority === p && styles.priorityButtonActive,
-                    { borderColor: getPriorityColor(p) }
+                    { borderColor: getPriorityColor(p.key) },
+                    priority === p.key && {
+                      backgroundColor: getPriorityColor(p.key) + '13',
+                      borderColor: getPriorityColor(p.key)
+                    }
                   ]}
-                  onPress={() => setPriority(p as any)}
+                  onPress={() => setPriority(p.key as any)}
                 >
                   <Text style={[
                     styles.priorityButtonText,
-                    priority === p && { color: getPriorityColor(p) }
+                    priority === p.key && { color: getPriorityColor(p.key) }
                   ]}>
-                    {p.charAt(0).toUpperCase() + p.slice(1)}
+                    {p.label}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
           </View>
 
-          {/* Location */}
+          {/* Status */}
           <View style={styles.formGroup}>
-            <Text style={styles.formLabel}>Location*</Text>
-            <View style={styles.inputContainer}>
-              <MapPin size={20} color="#6B7280" style={styles.inputIcon} />
-              <TextInput
-                style={styles.textInput}
-                placeholder="Building A, Floor 2, Room 201"
-                placeholderTextColor="#9CA3AF"
-                value={location}
-                onChangeText={setLocation}
-              />
+            <View style={styles.labelContainer}>
+              <Text style={styles.formLabel}>
+                Status <Text style={styles.required}>*</Text>
+              </Text>
+            </View>
+            <View style={styles.statusGrid}>
+              {statuses.map((s) => (
+                <TouchableOpacity
+                  key={s.key}
+                  style={[
+                    styles.statusButton,
+                    { borderColor: getStatusColor(s.key) },
+                    status === s.key && {
+                      backgroundColor: getStatusColor(s.key) + '13',
+                      borderColor: getStatusColor(s.key)
+                    }
+                  ]}
+                  onPress={() => setStatus(s.key as any)}
+                >
+                  <Text style={[
+                    styles.statusButtonText,
+                    status === s.key && { color: getStatusColor(s.key) }
+                  ]}>
+                    {s.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Location Details */}
+          <View style={styles.formGroup}>
+            <View style={styles.labelContainer}>
+              <Text style={styles.formLabel}>
+                Location <Text style={styles.required}>*</Text>
+              </Text>
+            </View>
+
+            <View style={styles.locationInputContainer}>
+              <View style={styles.inputContainer}>
+                <MapPin size={20} color="#9CA3AF" />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter location manually"
+                  placeholderTextColor="#9CA3AF"
+                  value={location}
+                  onChangeText={setLocation}
+                />
+              </View>
+
+              <TouchableOpacity
+                style={styles.gpsButton}
+                onPress={async () => {
+                  try {
+                    const { status } = await Location.requestForegroundPermissionsAsync()
+                    if (status !== 'granted') {
+                      Alert.alert('Permission denied', 'Location permission is required to use GPS')
+                      return
+                    }
+
+                    const loc = await Location.getCurrentPositionAsync({})
+                    const address = await Location.reverseGeocodeAsync({
+                      latitude: loc.coords.latitude,
+                      longitude: loc.coords.longitude,
+                    })
+
+                    const locationData: LocationData = {
+                      latitude: loc.coords.latitude,
+                      longitude: loc.coords.longitude,
+                      address: address[0] ? `${address[0].street}, ${address[0].city}` : undefined
+                    }
+
+                    setCurrentLocation(locationData)
+
+                    if (address[0]) {
+                      const city = address[0].city || ''
+                      const district = address[0].district || address[0].subregion || ''
+                      setLocation(`${city}${city && district ? ', ' : ''}${district}`)
+                    } else {
+                      setLocation(`${loc.coords.latitude.toFixed(6)}, ${loc.coords.longitude.toFixed(6)}`)
+                    }
+                  } catch (error) {
+                    console.error('Error getting GPS location:', error)
+                    Alert.alert('Error', 'Failed to get GPS location')
+                  }
+                }}
+              >
+                <MapPinned size={18} color="#FF6B35" />
+              </TouchableOpacity>
             </View>
           </View>
 
           {/* Description */}
           <View style={styles.formGroup}>
-            <Text style={styles.formLabel}>Description*</Text>
+            <View style={styles.labelContainer}>
+              <Text style={styles.formLabel}>
+                Description <Text style={styles.required}>*</Text>
+              </Text>
+            </View>
             <TextInput
               style={styles.textArea}
-              placeholder="Describe what happened in detail..."
+              placeholder="Describe the incident in detail..."
               placeholderTextColor="#9CA3AF"
               multiline
               numberOfLines={6}
@@ -333,22 +428,19 @@ export default function EditIncident() {
 
           {/* Photos */}
           <View style={styles.formGroup}>
-            <Text style={styles.formLabel}>Photos</Text>
-            <TouchableOpacity style={styles.photoUploadButton} onPress={showImageOptions}>
-              <Camera size={24} color="#6B7280" />
-              <Text style={styles.photoUploadText}>Add Photo</Text>
+            <Text style={styles.formLabel}>Photos & Evidence</Text>
+            <TouchableOpacity style={styles.mediaButton} onPress={showImageOptions}>
+              <Camera size={20} color="#FF6B35" />
+              <Text style={styles.mediaButtonText}>Add Photos</Text>
             </TouchableOpacity>
 
             {selectedImages.length > 0 && (
-              <View style={styles.imagePreviewContainer}>
-                <Text style={styles.imageCountText}>
-                  {selectedImages.length} image{selectedImages.length !== 1 ? 's' : ''}
-                </Text>
+              <View style={styles.mediaGrid}>
                 {selectedImages.map((image) => (
-                  <View key={image.id} style={styles.imagePreview}>
-                    <Image source={{ uri: image.uri }} style={styles.previewImage} />
+                  <View key={image.id} style={styles.mediaItem}>
+                    <Image source={{ uri: image.uri }} style={styles.mediaPreview} />
                     <TouchableOpacity
-                      style={styles.removeImageButton}
+                      style={styles.removeMediaButton}
                       onPress={() => removeImage(image.id)}
                     >
                       <X size={16} color="#FFFFFF" />
@@ -363,20 +455,22 @@ export default function EditIncident() {
               </View>
             )}
           </View>
-
-          {/* Save Button */}
-          <TouchableOpacity 
-            style={[styles.saveButton, saving && styles.saveButtonDisabled]} 
-            onPress={handleSave}
-            disabled={saving}
-          >
-            <Save size={24} color="#FFFFFF" style={styles.saveButtonIcon} />
-            <Text style={styles.saveButtonText}>
-              {saving ? 'Saving...' : 'Save Changes'}
-            </Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <View style={styles.bottomBar}>
+        {/* Submit Button */}
+        <TouchableOpacity
+          style={[styles.submitButton, saving && styles.submitButtonDisabled]}
+          onPress={handleSave}
+          disabled={saving}
+        >
+          <Save size={20} color="#FFFFFF" />
+          <Text style={styles.submitButtonText}>
+            {saving ? 'Saving...' : 'Save Changes'}
+          </Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   )
 }
@@ -385,13 +479,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 100,
   },
   loadingContainer: {
     flex: 1,
@@ -404,217 +491,270 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderWidth: 0.3,
+    borderRadius: 20,
+    backgroundColor: '#ffffffff',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  backButtonIcon: {
+    color: '#111827',
+    alignItems: 'center',
+  },
+  headerContent: {
+    flex: 1,
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: '#111827',
   },
-  form: {
+  headerIcon: {
+    padding: 4,
+  },
+  scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 100,
+  },
+  formSection: {
+    padding: 20,
   },
   formGroup: {
     marginBottom: 24,
   },
+  labelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
   formLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  required: {
+    color: '#EF4444',
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 12,
   },
   incidentTypeGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    gap: 10,
   },
   incidentTypeButton: {
     width: '48%',
-    paddingVertical: 16,
-    paddingHorizontal: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 0.8,
+    borderColor: '#E5E7EB',
     borderRadius: 12,
-    borderWidth: 2,
+    padding: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
-    minHeight: 56,
+    minHeight: 60,
+    position: 'relative',
   },
   incidentTypeButtonActive: {
     borderColor: '#FF6B35',
-    backgroundColor: 'rgba(255, 107, 53, 0.1)',
-  },
-  incidentTypeButtonInactive: {
-    borderColor: '#D1D5DB',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFF5F2',
   },
   incidentTypeButtonText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
+    color: '#6B7280',
     textAlign: 'center',
   },
   incidentTypeButtonTextActive: {
     color: '#FF6B35',
-    fontWeight: 'bold',
   },
-  incidentTypeButtonTextInactive: {
-    color: '#6B7280',
-  },
-  priorityContainer: {
+  priorityGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-  },
-  statusButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: '#D1D5DB',
-    alignItems: 'center',
-    marginHorizontal: 4,
-    marginBottom: 8,
-    backgroundColor: '#FFFFFF',
-  },
-  statusButtonActive: {
-    borderColor: '#3B82F6',
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-  },
-  statusButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#6B7280',
-  },
-  statusButtonTextActive: {
-    color: '#3B82F6',
-    fontWeight: 'bold',
+    gap: 10,
   },
   priorityButton: {
-    flex: 1,
     paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 8,
+    paddingHorizontal: 16,
+    borderRadius: 12,
     borderWidth: 2,
+    backgroundColor: '#FFFFFF',
+    minWidth: '22%',
     alignItems: 'center',
-    marginHorizontal: 4,
-    marginBottom: 8,
-  },
-  priorityButtonActive: {
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
   },
   priorityButtonText: {
     fontSize: 14,
     fontWeight: '500',
     color: '#6B7280',
   },
+  statusGrid: {
+    flexDirection: 'row',
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  statusButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    backgroundColor: '#FFFFFF',
+    minWidth: '22%',
+    alignItems: 'center',
+  },
+  statusButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  locationInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   inputContainer: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#D1D5DB',
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
     paddingHorizontal: 16,
-    minHeight: 56,
   },
-  inputIcon: {
-    marginRight: 12,
-  },
-  textInput: {
+  input: {
     flex: 1,
     fontSize: 16,
     color: '#111827',
+    paddingVertical: 14,
+    marginLeft: 8,
   },
+  gpsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FEF3F2',
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+    borderRadius: 12,
+    borderWidth: 0.5,
+    borderColor: '#FF6B35',
+    minWidth: 50,
+  },
+  
   textArea: {
     backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#D1D5DB',
     borderRadius: 12,
-    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     fontSize: 16,
     color: '#111827',
     minHeight: 120,
   },
-  photoUploadButton: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#D1D5DB',
-    borderStyle: 'dashed',
-    borderRadius: 12,
-    paddingVertical: 24,
-    paddingHorizontal: 16,
+  mediaButton: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    borderStyle: 'dashed',
   },
-  photoUploadText: {
+  mediaButtonText: {
     fontSize: 16,
+    fontWeight: '500',
     color: '#6B7280',
     marginLeft: 8,
   },
-  imagePreviewContainer: {
-    marginTop: 16,
+  mediaGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginTop: 12,
   },
-  imageCountText: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 12,
-    fontWeight: '500',
-  },
-  imagePreview: {
+  mediaItem: {
     position: 'relative',
-    marginBottom: 12,
-  },
-  previewImage: {
-    width: '100%',
-    height: 200,
+    width: 100,
+    height: 100,
     borderRadius: 12,
+    overflow: 'hidden',
   },
-  removeImageButton: {
+  mediaPreview: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  removeMediaButton: {
     position: 'absolute',
-    top: 8,
-    right: 8,
+    top: 4,
+    right: 4,
     backgroundColor: '#EF4444',
     borderRadius: 12,
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: 4,
   },
   newBadge: {
     position: 'absolute',
-    top: 8,
-    left: 8,
+    bottom: 4,
+    left: 4,
     backgroundColor: '#10B981',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
   newBadgeText: {
     color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: 'bold',
+    fontSize: 10,
+    fontWeight: '600',
   },
-  saveButton: {
-    backgroundColor: '#10B981',
-    paddingVertical: 16,
-    borderRadius: 12,
+  bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  submitButton: {
+    backgroundColor: '#FF6B35',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
     marginTop: 8,
   },
-  saveButtonDisabled: {
-    backgroundColor: '#9CA3AF',
+  submitButtonDisabled: {
+    backgroundColor: '#D1D5DB',
   },
-  saveButtonIcon: {
-    marginRight: 8,
-  },
-  saveButtonText: {
+  submitButtonText: {
     color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
   },
 })
