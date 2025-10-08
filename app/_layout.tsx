@@ -44,8 +44,9 @@ export default function RootLayout() {
     const inAuthGroup = segments[0] === "(auth)";
     const inOnboardingGroup = segments[0] === "(onboarding)";
     const inTabsGroup = segments[0] === "(tabs)";
+    
 
-    const allowedRoutes = ['createIncident', 'incidents', 'instructor', 'certificate', 'course', 'notifications'];
+    const allowedRoutes = ['createIncident', 'incidents', 'instructor', 'certificate', 'course', 'notifications', 'quiz'];
     const currentRoute = segments[0];
     const isAllowedRoute = allowedRoutes.includes(currentRoute);
 
