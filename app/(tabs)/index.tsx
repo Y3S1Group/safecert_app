@@ -17,6 +17,7 @@ import {
 import { auth, db } from '@/config/firebaseConfig'
 import { onAuthStateChanged } from 'firebase/auth'
 import { doc, getDoc } from 'firebase/firestore'
+import { collection, query, where, onSnapshot } from 'firebase/firestore'
 
 interface UserInfo {
   name: string;
@@ -39,6 +40,7 @@ export default function Home() {
     pendingTrainings: 3,
     reportsSubmitted: 2
   });
+  const [unreadNotifications, setUnreadNotifications] = useState(0)
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -48,6 +50,45 @@ export default function Home() {
     });
     return () => unsubscribe();
   }, []);
+
+  useEffect(()=> {
+    let unsubscribeReports: (() => void) | undefined;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        await fetchUserData(user.email || '');
+
+        const q = query(
+          collection(db, 'incidents'),
+          where('reportedByUid', '==', user.uid)
+        );
+
+        unsubscribeReports = onSnapshot(q, (snapshot) => {
+          setStats(prev => ({
+            ...prev,
+            reportsSubmitted: snapshot.size
+          }));
+        });
+      }
+    });
+  }, []);
+
+
+  useEffect(() => {
+    if (!auth.currentUser) return 
+
+    const q = query(
+      collection(db, 'notifications'),
+      where('userId', '==', auth.currentUser.uid),
+      where('read', '==', false)
+    )
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setUnreadNotifications(snapshot.size)
+    })
+
+    return () => unsubscribe()
+  }, [])
 
   const fetchUserData = async (email: string) => {
     try {
@@ -98,7 +139,7 @@ export default function Home() {
       icon: AlertTriangle,
       color: '#B03A2E',
       bgColor: 'rgba(176, 58, 46, 0.1)',
-      onPress: () => router.push('/incidents/createIncident' as any)
+      onPress: () => router.push('/incidents/new' as any)
     },
     {
       id: 'profile',
@@ -147,14 +188,20 @@ export default function Home() {
             <Text style={styles.greeting}>
               {getGreeting()}, {userInfo?.name?.split(' ')[0] || 'User'}!
             </Text>
-            <Text style={styles.department}>{userInfo?.department}</Text>
+            {/* <Text style={styles.department}>{userInfo?.department}</Text> */}
           </View>
           <TouchableOpacity 
             style={styles.notificationButton}
-            onPress={() => Alert.alert('Notifications', 'No new notifications')}
+            onPress={() => router.push('/notifications')}
           >
             <Bell size={24} color="#6B7280" />
-            <View style={styles.notificationBadge} />
+            {unreadNotifications > 0 && (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>
+                  {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -298,12 +345,20 @@ const styles = StyleSheet.create({
   },
   notificationBadge: {
     position: 'absolute',
-    top: 6,
-    right: 6,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    top: 4,
+    right: 4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
     backgroundColor: '#EF4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  notificationBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
   },
   sectionTitle: {
     fontSize: 20,

@@ -1,10 +1,13 @@
 import { auth, db } from '@/config/firebaseConfig'
 import { useRouter } from 'expo-router'
 import { collection, deleteDoc, doc, onSnapshot, orderBy, query, updateDoc, where } from 'firebase/firestore'
-import { AlertTriangle, Clock, Edit, Eye, Filter, MapPin, Plus, Search, Trash2, TrendingUp, FileText, Image as ImageIcon, Video } from 'lucide-react-native'
+import { AlertTriangle, Clock, Edit, Eye, MapPin, Plus, Search, Trash2, TrendingUp, FileText, Image as ImageIcon, Video, CheckCircle } from 'lucide-react-native'
 import React, { useEffect, useState } from 'react'
 import { Alert, FlatList, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import FloatingButton from '@/components/FloatingButton'
+import { useSnackbar } from '@/contexts/SnackbarContext'
+import { useAlert } from '@/contexts/AlertContext'
 
 interface Incident {
   id: string;
@@ -27,12 +30,13 @@ interface Incident {
 
 export default function Reports() {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<'create' | 'list' | 'analytics'>('list')
   const [incidents, setIncidents] = useState<Incident[]>([])
   const [filteredIncidents, setFilteredIncidents] = useState<Incident[]>([])
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
+  const { showSnackbar } = useSnackbar()
+    const { showAlert } = useAlert()
 
   useEffect(() => {
     if (!auth.currentUser) return
@@ -75,39 +79,46 @@ export default function Reports() {
   }, [incidents, filterStatus, searchQuery])
 
   const handleDeleteIncident = async (incidentId: string) => {
-    Alert.alert(
-      'Delete Report',
-      'Are you sure you want to delete this incident report? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
+    showAlert({
+      message: 'Are you sure you want to delete this incident report? This action cannot be undone.',
+      icon: Trash2,
+      iconColor: '#EF4444' ,
+      iconBgColor: '#eeefeeff',
+      buttons: [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+          onPress: () => console.log('Cancelled')
+        },
         {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
             try {
               await deleteDoc(doc(db, 'incidents', incidentId))
-              Alert.alert('Success', 'Report deleted successfully')
+              showAlert({
+                      message: 'Report deleted successfully',
+                      icon: CheckCircle,
+                      iconColor: '#10B981',
+                      iconBgColor: '#D1FAE5',
+                      autoClose: true,
+                      autoCloseDelay: 2000
+                    })
+              
+                    setTimeout(() => {
+                      router.back()
+                    }, 2000)
             } catch (error) {
               console.error('Error deleting incident:', error)
-              Alert.alert('Error', 'Failed to delete report')
+              showSnackbar({
+                message: 'Failed to delete report',
+                type: 'error'
+              })
             }
           }
         }
       ]
-    )
-  }
-
-  const handleUpdateStatus = async (incidentId: string, newStatus: string) => {
-    try {
-      await updateDoc(doc(db, 'incidents', incidentId), {
-        status: newStatus,
-        updatedAt: new Date()
-      })
-      Alert.alert('Success', `Status updated to ${newStatus}`)
-    } catch (error) {
-      console.error('Error updating status:', error)
-      Alert.alert('Error', 'Failed to update status')
-    }
+    })
   }
 
   const getStatusColor = (status: string) => {
@@ -238,221 +249,125 @@ export default function Reports() {
     </TouchableOpacity>
   )
 
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'create':
-        return (
-          <View style={styles.emptyStateContainer}>
-            <View style={styles.iconCircle}>
-              <Plus size={32} color="#FF6B35" />
-            </View>
-            <Text style={styles.emptyStateTitle}>Create New Report</Text>
-            <Text style={styles.emptyStateDescription}>
-              Document incidents and issues quickly with our easy-to-use reporting system
-            </Text>
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={() => {
-                console.log('=== CREATE BUTTON PRESSED ===')
-                console.log('Current route:', router)
-                console.log('Attempting to navigate to: /createIncident')
-
-                try {
-                  router.push('/incidents/new')
-                  console.log('Navigation called successfully')
-                } catch (error) {
-                  console.error('Navigation error:', error)
-                }
-              }}
-            >
-              <Plus size={20} color="#FFFFFF" />
-              <Text style={styles.primaryButtonText}>Create Incident Report</Text>
-            </TouchableOpacity>
-          </View>
-        )
-
-      case 'list':
-        return (
-          <View style={styles.listContainer}>
-            {/* Search Bar */}
-            <View style={styles.searchWrapper}>
-              <View style={styles.searchContainer}>
-                <Search size={18} color="#9CA3AF" />
-                <TextInput
-                  style={styles.searchInput}
-                  placeholder="Search by location, type, or description..."
-                  placeholderTextColor="#9CA3AF"
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                />
-                {searchQuery.length > 0 && (
-                  <TouchableOpacity onPress={() => setSearchQuery('')}>
-                    <Text style={styles.clearButton}>×</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
-
-            {/* Status Filter Pills */}
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false} 
-              style={styles.filterScroll}
-              contentContainerStyle={styles.filterContent}
-            >
-              {[
-                { key: 'all', label: 'All', count: incidents.length },
-                { key: 'pending', label: 'Pending', count: incidents.filter(i => i.status === 'pending').length },
-                { key: 'investigating', label: 'In Progress', count: incidents.filter(i => i.status === 'investigating').length },
-                { key: 'resolved', label: 'Resolved', count: incidents.filter(i => i.status === 'resolved').length },
-                { key: 'closed', label: 'Closed', count: incidents.filter(i => i.status === 'closed').length },
-              ].map((filter) => (
-                <TouchableOpacity
-                  key={filter.key}
-                  style={[
-                    styles.filterPill,
-                    filterStatus === filter.key && styles.filterPillActive
-                  ]}
-                  onPress={() => setFilterStatus(filter.key)}
-                >
-                  <Text style={[
-                    styles.filterPillText,
-                    filterStatus === filter.key && styles.filterPillTextActive
-                  ]}>
-                    {filter.label}
-                  </Text>
-                  <View style={[
-                    styles.filterCount,
-                    filterStatus === filter.key && styles.filterCountActive
-                  ]}>
-                    <Text style={[
-                      styles.filterCountText,
-                      filterStatus === filter.key && styles.filterCountTextActive
-                    ]}>
-                      {filter.count}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            {/* Results count */}
-            {searchQuery.length > 0 && (
-              <View style={styles.resultsHeader}>
-                <Text style={styles.resultsText}>
-                  {filteredIncidents.length} {filteredIncidents.length === 1 ? 'result' : 'results'} found
-                </Text>
-              </View>
-            )}
-
-            {/* Incidents List */}
-            <FlatList
-              data={filteredIncidents}
-              renderItem={renderIncidentCard}
-              keyExtractor={(item) => item.id}
-              contentContainerStyle={styles.listContent}
-              showsVerticalScrollIndicator={false}
-              style={{ marginTop: 0 }}
-              ListEmptyComponent={
-                <View style={styles.emptyStateContainer}>
-                  <View style={styles.iconCircle}>
-                    <FileText size={32} color="#D1D5DB" />
-                  </View>
-                  <Text style={styles.emptyStateTitle}>
-                    {searchQuery ? 'No results found' : 'No incident reports'}
-                  </Text>
-                  <Text style={styles.emptyStateDescription}>
-                    {searchQuery 
-                      ? 'Try adjusting your search or filters' 
-                      : 'Create your first incident report to get started'}
-                  </Text>
-                  {!searchQuery && (
-                    <TouchableOpacity
-                      style={styles.secondaryButton}
-                      onPress={() => setActiveTab('create')}
-                    >
-                      <Plus size={18} color="#FF6B35" />
-                      <Text style={styles.secondaryButtonText}>Create Report</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              }
-            />
-          </View>
-        )
-
-      case 'analytics':
-        return (
-          <View style={styles.emptyStateContainer}>
-            <View style={styles.iconCircle}>
-              <TrendingUp size={32} color="#1B365D" />
-            </View>
-            <Text style={styles.emptyStateTitle}>Analytics Dashboard</Text>
-            <Text style={styles.emptyStateDescription}>
-              View detailed insights and statistics about your incident reports
-            </Text>
-            <TouchableOpacity 
-              style={[styles.primaryButton, { backgroundColor: '#1B365D' }]}
-              onPress={() => router.push('/incidents/analytics')}
-            >
-              <TrendingUp size={20} color="#FFFFFF" />
-              <Text style={styles.primaryButtonText}>View Analytics</Text>
-            </TouchableOpacity>
-          </View>
-        )
-
-      default:
-        return null
-    }
-  }
-
   return (
     <SafeAreaView style={styles.container}>
-      {/* Enhanced Tab Navigation */}
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Incident Reports</Text>
-        <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'list' && styles.activeTab]}
-            onPress={() => setActiveTab('list')}
-          >
-            <FileText size={18} color={activeTab === 'list' ? '#FF6B35' : '#9CA3AF'} />
-            <Text style={[styles.tabText, activeTab === 'list' && styles.activeTabText]}>
-              Reports
-            </Text>
-            {incidents.length > 0 && (
-              <View style={styles.tabBadge}>
-                <Text style={styles.tabBadgeText}>{incidents.length}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'create' && styles.activeTab]}
-            onPress={() => setActiveTab('create')}
-          >
-            <Plus size={18} color={activeTab === 'create' ? '#FF6B35' : '#9CA3AF'} />
-            <Text style={[styles.tabText, activeTab === 'create' && styles.activeTabText]}>
-              Create
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'analytics' && styles.activeTab]}
-            onPress={() => setActiveTab('analytics')}
-          >
-            <TrendingUp size={18} color={activeTab === 'analytics' ? '#FF6B35' : '#9CA3AF'} />
-            <Text style={[styles.tabText, activeTab === 'analytics' && styles.activeTabText]}>
-              Analytics
-            </Text>
-          </TouchableOpacity>
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle}>Incident Reports</Text>
         </View>
       </View>
 
-      {/* Content */}
-      <View style={styles.content}>
-        {renderTabContent()}
+      {/* Main Content */}
+      <View style={styles.listContainer}>
+        {/* Search Bar */}
+        <View style={styles.searchWrapper}>
+          <View style={styles.searchContainer}>
+            <Search size={18} color="#9CA3AF" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search by location, type, or description..."
+              placeholderTextColor="#9CA3AF"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Text style={styles.clearButton}>×</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* Status Filter Pills */}
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false} 
+          style={styles.filterScroll}
+          contentContainerStyle={styles.filterContent}
+        >
+          {[
+            { key: 'all', label: 'All', count: incidents.length },
+            { key: 'pending', label: 'Pending', count: incidents.filter(i => i.status === 'pending').length },
+            { key: 'investigating', label: 'In Progress', count: incidents.filter(i => i.status === 'investigating').length },
+            { key: 'resolved', label: 'Resolved', count: incidents.filter(i => i.status === 'resolved').length },
+            { key: 'closed', label: 'Closed', count: incidents.filter(i => i.status === 'closed').length },
+          ].map((filter) => (
+            <TouchableOpacity
+              key={filter.key}
+              style={[
+                styles.filterPill,
+                filterStatus === filter.key && styles.filterPillActive
+              ]}
+              onPress={() => setFilterStatus(filter.key)}
+            >
+              <Text style={[
+                styles.filterPillText,
+                filterStatus === filter.key && styles.filterPillTextActive
+              ]}>
+                {filter.label}
+              </Text>
+              <View style={[
+                styles.filterCount,
+                filterStatus === filter.key && styles.filterCountActive
+              ]}>
+                <Text style={[
+                  styles.filterCountText,
+                  filterStatus === filter.key && styles.filterCountTextActive
+                ]}>
+                  {filter.count}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* Results count */}
+        {searchQuery.length > 0 && (
+          <View style={styles.resultsHeader}>
+            <Text style={styles.resultsText}>
+              {filteredIncidents.length} result{filteredIncidents.length !== 1 ? 's' : ''} found
+            </Text>
+          </View>
+        )}
+
+        {/* Incidents List */}
+        <FlatList
+          data={filteredIncidents}
+          renderItem={renderIncidentCard}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          style={{ marginTop: 0 }}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <AlertTriangle size={48} color="#D1D5DB" />
+              <Text style={styles.emptyTitle}>No incident reports</Text>
+              <Text style={styles.emptyText}>
+                {searchQuery ? 'Try adjusting your search' : 'Create your first incident report to get started'}
+              </Text>
+            </View>
+          }
+        />
       </View>
+
+      {/* Floating Action Buttons */}
+      <FloatingButton
+        icon={TrendingUp}
+        backgroundColor="#FFFFFF"
+        borderColor="transparent"
+        iconColor="#3B82F6"
+        position="secondary"
+        onPress={() => router.push('/incidents/analytics')}
+      />
+      <FloatingButton
+        icon={Plus}
+        backgroundColor="#FFFFFF"
+        borderColor="transparent"
+        iconColor="#FF6B35"
+        position="primary"
+        onPress={() => router.push('/incidents/new')}
+      />
     </SafeAreaView>
   )
 }
@@ -463,60 +378,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: '#FFFFFF',
-    paddingTop: 8,
-    paddingBottom: 0,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    paddingTop: 16,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+    borderBottomWidth: 0.9,
+    borderBottomColor: '#E5E7EB',
+  },
+  headerContent: {
+    flex: 1,
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#111827',
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-  tabContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 12,
-  },
-  tab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 3,
-    borderBottomColor: 'transparent',
-    gap: 6,
-  },
-  activeTab: {
-    borderBottomColor: '#FF6B35',
-  },
-  tabText: {
-    fontSize: 14,
+    fontSize: 20,
     fontWeight: '600',
-    color: '#9CA3AF',
-  },
-  activeTabText: {
-    color: '#FF6B35',
-  },
-  tabBadge: {
-    backgroundColor: '#FF6B35',
-    borderRadius: 10,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    minWidth: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tabBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  content: {
-    flex: 1,
+    color: '#111827',
   },
   listContainer: {
     flex: 1,
@@ -531,9 +410,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F9FAFB',
+    borderRadius: 24,
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: 4,
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
@@ -544,63 +423,65 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   clearButton: {
-    fontSize: 24,
+    fontSize: 28,
     color: '#9CA3AF',
-    paddingHorizontal: 4,
+    fontWeight: '300',
+    paddingHorizontal: 8,
   },
   filterScroll: {
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: '#E5E7EB',
     maxHeight: 60,
   },
   filterContent: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
     gap: 8,
   },
   filterPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    paddingVertical: 8,
     paddingHorizontal: 14,
-    height: 36,
     borderRadius: 20,
-    marginRight: 8,
+    backgroundColor: '#F3F4F6',
     gap: 6,
+    height: 36,
   },
   filterPillActive: {
-    backgroundColor: '#FF6B35',
+    backgroundColor: '#FEF3F2',
   },
   filterPillText: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '500',
     color: '#6B7280',
   },
   filterPillTextActive: {
-    color: '#FFFFFF',
+    color: '#FF6B35',
+    fontWeight: '600',
   },
   filterCount: {
     backgroundColor: '#E5E7EB',
-    borderRadius: 10,
     paddingHorizontal: 6,
     paddingVertical: 2,
+    borderRadius: 10,
     minWidth: 20,
     alignItems: 'center',
   },
   filterCountActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: '#FF6B35',
   },
   filterCountText: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#6B7280',
   },
   filterCountTextActive: {
     color: '#FFFFFF',
   },
   resultsHeader: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingVertical: 12,
     backgroundColor: '#F9FAFB',
   },
@@ -610,19 +491,19 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   listContent: {
-    padding: 16,
-    flexGrow: 1,
+    padding: 20,
+    paddingBottom: 100,
   },
   incidentCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    marginBottom: 12,
+    marginBottom: 16,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.08,
     shadowRadius: 8,
-    elevation: 2,
+    elevation: 3,
   },
   priorityBar: {
     height: 4,
@@ -642,9 +523,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    gap: 6,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
   },
   statusDot: {
     width: 6,
@@ -657,9 +538,9 @@ const styles = StyleSheet.create({
   },
   priorityBadge: {
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1.5,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
   },
   priorityText: {
     fontSize: 11,
@@ -667,26 +548,25 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   cardTitle: {
-    fontSize: 17,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: '600',
     color: '#111827',
     marginBottom: 8,
   },
   locationContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
     gap: 4,
+    marginBottom: 8,
   },
   locationText: {
     fontSize: 13,
     color: '#6B7280',
-    fontWeight: '500',
     flex: 1,
   },
   descriptionText: {
     fontSize: 14,
-    color: '#4B5563',
+    color: '#6B7280',
     lineHeight: 20,
     marginBottom: 12,
   },
@@ -707,7 +587,6 @@ const styles = StyleSheet.create({
   metaText: {
     fontSize: 12,
     color: '#9CA3AF',
-    fontWeight: '500',
   },
   attachmentsContainer: {
     flexDirection: 'row',
@@ -716,11 +595,11 @@ const styles = StyleSheet.create({
   attachmentBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    gap: 3,
+    backgroundColor: '#F3F4F6',
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    gap: 4,
+    paddingVertical: 3,
+    borderRadius: 8,
   },
   attachmentCount: {
     fontSize: 11,
@@ -736,10 +615,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F9FAFB',
     paddingVertical: 10,
+    paddingHorizontal: 12,
     borderRadius: 10,
-    gap: 6,
+    backgroundColor: '#F9FAFB',
+    gap: 4,
   },
   deleteButton: {
     backgroundColor: '#FEF2F2',
@@ -752,71 +632,23 @@ const styles = StyleSheet.create({
   deleteText: {
     color: '#EF4444',
   },
-  emptyStateContainer: {
+  emptyContainer: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 32,
-    paddingVertical: 48,
-  },
-  iconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#F3F4F6',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
+    paddingVertical: 60,
   },
-  emptyStateTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
     color: '#111827',
+    marginTop: 16,
     marginBottom: 8,
-    textAlign: 'center',
   },
-  emptyStateDescription: {
+  emptyText: {
     fontSize: 14,
     color: '#6B7280',
     textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 24,
-  },
-  primaryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FF6B35',
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    gap: 8,
-    shadowColor: '#FF6B35',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  secondaryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFF5F2',
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#FF6B35',
-    gap: 8,
-  },
-  secondaryButtonText: {
-    color: '#FF6B35',
-    fontSize: 16,
-    fontWeight: '700',
+    paddingHorizontal: 40,
   },
 })
