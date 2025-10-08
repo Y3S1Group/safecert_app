@@ -162,6 +162,23 @@ export default function profile() {
     setModalVisible(false);
   };
 
+  const handleSwitchToInstructor = () => {
+    Alert.alert(
+      'Switch Account',
+      'Are you sure you want to switch to your Teacher account?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Switch', 
+          onPress: () => {
+            // Logic to switch accounts here
+            router.replace('/instructor/instructorDash'); // example path
+          } 
+        },
+      ]
+    );
+  };
+
   const handleNotifications = () => {
     Alert.alert('Notifications', 'Notification settings coming soon!');
   };
@@ -247,6 +264,14 @@ export default function profile() {
       {/* Settings */}
       <View style={styles.sectionCard}>
         <Text style={styles.sectionTitle}>Settings</Text>
+          <TouchableOpacity style={styles.settingItem} onPress={handleSwitchToInstructor}>
+            <View style={styles.settingLeft}>
+              <Building size={20} color="#6B7280" />
+              <Text style={styles.settingText}>Switch to Instructor Account</Text>
+            </View>
+            <ChevronRight size={20} color="#9CA3AF" />
+          </TouchableOpacity>
+          <View style={styles.divider} />
         <View style={styles.settingsList}>
           <TouchableOpacity style={styles.settingItem} onPress={handleNotifications}>
             <View style={styles.settingLeft}>
