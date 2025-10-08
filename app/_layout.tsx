@@ -5,6 +5,8 @@ import { auth } from "../config/firebaseConfig";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator } from "react-native";
+import { AlertProvider } from "@/contexts/AlertContext";
+import SnackbarProvider from "@/contexts/SnackbarContext";
 
 export default function RootLayout() {
   const [user, setUser] = useState<User | null>(null);
@@ -42,8 +44,9 @@ export default function RootLayout() {
     const inAuthGroup = segments[0] === "(auth)";
     const inOnboardingGroup = segments[0] === "(onboarding)";
     const inTabsGroup = segments[0] === "(tabs)";
+    
 
-    const allowedRoutes = ['createIncident', 'incidents', 'course', 'quiz',];
+    const allowedRoutes = ['createIncident', 'incidents', 'instructor', 'certificate', 'course', 'notifications', 'quiz'];
     const currentRoute = segments[0];
     const isAllowedRoute = allowedRoutes.includes(currentRoute);
 
@@ -78,13 +81,15 @@ export default function RootLayout() {
   }
 
   return (
-    <>
-    <StatusBar style='inverted'/>
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(onboarding)" />
-      <Stack.Screen name="(auth)" />
-      <Stack.Screen name="(tabs)" />
-    </Stack>
-    </>
+    <AlertProvider>
+      <SnackbarProvider>
+        <StatusBar style='inverted' />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(onboarding)" />
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(tabs)" />
+        </Stack>
+      </SnackbarProvider>
+    </AlertProvider>
   );
 }

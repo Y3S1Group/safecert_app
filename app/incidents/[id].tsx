@@ -1,10 +1,12 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert } from 'react-native'
 import React, { useState, useEffect } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { ArrowLeft, MapPin, Clock, AlertTriangle, Edit, Trash2, User } from 'lucide-react-native'
+import { ArrowLeft, MapPin, Clock, AlertTriangle, Edit, Trash2, User, CheckCircle, DeleteIcon } from 'lucide-react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { doc, getDoc, deleteDoc } from 'firebase/firestore'
 import { db } from '@/config/firebaseConfig'
+import { useSnackbar } from '@/contexts/SnackbarContext'
+import { useAlert } from '@/contexts/AlertContext'
 
 interface Incident {
   id: string;
@@ -31,6 +33,8 @@ export default function IncidentDetails() {
   const router = useRouter()
   const [incident, setIncident] = useState<Incident | null>(null)
   const [loading, setLoading] = useState(true)
+  const { showSnackbar } = useSnackbar()
+  const { showAlert } = useAlert()
 
   useEffect(() => {
     fetchIncident()
@@ -44,40 +48,71 @@ export default function IncidentDetails() {
       if (docSnap.exists()) {
         setIncident({ id: docSnap.id, ...docSnap.data() } as Incident)
       } else {
-        Alert.alert('Error', 'Incident not found')
+        showAlert({
+        message: 'Incident not found',
+        icon: AlertTriangle,
+        iconColor: '#EF4444',
+        iconBgColor: '#eeefeeff',
+        autoClose: true,
+        autoCloseDelay: 2000
+      })
+
+      setTimeout(() => {
         router.back()
+      }, 2000)
       }
     } catch (error) {
       console.error('Error fetching incident:', error)
-      Alert.alert('Error', 'Failed to load incident details')
+      showSnackbar({
+        message: 'Failed to load incident details',
+        type: 'error'
+      })
     } finally {
       setLoading(false)
     }
   }
 
   const handleDelete = () => {
-    Alert.alert(
-      'Delete Report',
-      'Are you sure you want to delete this incident report? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
+    showAlert({
+      message: 'Are you sure you want to delete this incident report? This action cannot be undone.',
+      icon: Trash2,
+      iconColor: '#EF4444' ,
+      iconBgColor: '#eeefeeff',
+      buttons: [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+          onPress: () => console.log('Cancelled')
+        },
         {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
             try {
               await deleteDoc(doc(db, 'incidents', id as string))
-              Alert.alert('Success', 'Report deleted successfully', [
-                { text: 'OK', onPress: () => router.back() }
-              ])
+              showAlert({
+                message: 'Report deleted successfully',
+                icon: CheckCircle,
+                iconColor: '#10B981',
+                iconBgColor: '#D1FAE5',
+                autoClose: true,
+                autoCloseDelay: 2000
+              })
+
+              setTimeout(() => {
+                router.back()
+              }, 2000)
             } catch (error) {
               console.error('Error deleting incident:', error)
-              Alert.alert('Error', 'Failed to delete report')
+              showSnackbar({
+                message: 'Failed to delete report',
+                type: 'error'
+              })
             }
           }
         }
       ]
-    )
+    })
   }
 
   const getStatusColor = (status: string) => {
