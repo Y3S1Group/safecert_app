@@ -1,13 +1,15 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image } from 'react-native'
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image, ActivityIndicator } from 'react-native'
 import React, { useState, useEffect } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { ArrowLeft, AlertTriangle, MapPin, Camera, Video, X, Image as ImageIcon, MapPinned, FileText, ChevronLeft, AlignJustifyIcon } from 'lucide-react-native'
+import { ArrowLeft, AlertTriangle, MapPin, Camera, Video, X, Image as ImageIcon, MapPinned, FileText, ChevronLeft, AlignJustifyIcon, CheckCircle } from 'lucide-react-native'
 import * as ImagePicker from 'expo-image-picker'
 import * as Location from 'expo-location'
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { auth, db } from '@/config/firebaseConfig'
 import { uploadMultipleImages } from '@/config/cloudinaryConfig'
 import { useRouter } from 'expo-router'
+import { useSnackbar } from '@/contexts/SnackbarContext'
+import { useAlert } from '@/contexts/AlertContext'
 
 interface SelectedMedia {
   uri: string;
@@ -34,6 +36,8 @@ export default function CreateIncident() {
   const [currentLocation, setCurrentLocation] = useState<LocationData | null>(null)
   const [uploading, setUploading] = useState(false)
   const [priority, setPriority] = useState<'low' | 'medium' | 'high' | 'critical'>('medium')
+  const { showSnackbar } = useSnackbar()
+  const { showAlert } = useAlert()
 
   const incidentTypes = ['Injury', 'Near Miss', 'Hazard', 'Equipment Failure', 'Property Damage', 'Environmental']
   const priorities = [
@@ -81,7 +85,10 @@ export default function CreateIncident() {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
       if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Media library permission is required')
+        showSnackbar({
+          message: 'Media library permission is required',
+          type: 'warning'
+      })
         return
       }
 
@@ -103,7 +110,10 @@ export default function CreateIncident() {
       }
     } catch (error) {
       console.error('Error picking media:', error)
-      Alert.alert('Error', 'Failed to pick media')
+      showSnackbar({
+          message: 'Failed to pick media',
+          type: 'error'
+      })
     }
   }
 
@@ -111,7 +121,10 @@ export default function CreateIncident() {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync()
       if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Camera permission is required')
+        showSnackbar({
+          message: 'Camera permission is required',
+          type: 'warning'
+        })
         return
       }
 
@@ -131,7 +144,10 @@ export default function CreateIncident() {
       }
     } catch (error) {
       console.error('Error taking photo:', error)
-      Alert.alert('Error', 'Failed to take photo')
+      showSnackbar({
+          message: 'Failed to take photo',
+          type: 'error'
+      })
     }
   }
 
@@ -139,7 +155,10 @@ export default function CreateIncident() {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync()
       if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Camera permission is required')
+        showSnackbar({
+          message: 'Camera permission is required',
+          type: 'warning'
+        })
         return
       }
 
@@ -160,7 +179,10 @@ export default function CreateIncident() {
       }
     } catch (error) {
       console.error('Error recording video:', error)
-      Alert.alert('Error', 'Failed to record video')
+      showSnackbar({
+          message: 'Failed to record video',
+          type: 'error'
+        })
     }
   }
 
@@ -183,13 +205,22 @@ export default function CreateIncident() {
   }
 
   const handleSubmit = async () => {
+    if (uploading) return 
+    
     if (!incidentType || !location.trim() || !description.trim()) {
-      Alert.alert('Error', 'Please fill in all required fields')
-      return
+      showSnackbar({
+        message: 'Please fill in all required fields',
+        type: 'error',
+        duration: 3000
+      })
+      return 
     }
 
     if (!auth.currentUser) {
-      Alert.alert('Error', 'You must be logged in to submit a report')
+      showSnackbar({
+        message: 'You must be logged in to submit a report',
+        type: 'error'
+      })
       return
     }
 
@@ -235,12 +266,27 @@ export default function CreateIncident() {
 
       await addDoc(collection(db, 'incidents'), incidentData)
 
-      Alert.alert('Success', 'Incident report submitted successfully', [
-        { text: 'OK', onPress: () => router.back() }
-      ])
+      showAlert({
+        message: 'Incident report submitted successfully!',
+        icon: CheckCircle,
+        iconColor: '#10B981',
+        iconBgColor: '#D1FAE5',
+        autoClose: true,
+        autoCloseDelay: 2000
+      })
+
+      setTimeout(() => {
+        router.back()
+      }, 2000)
+
+      router.back()
     } catch (error) {
       console.error('Error submitting report:', error)
-      Alert.alert('Error', 'Failed to submit report. Please try again.')
+      showSnackbar({
+        message: 'Failed to submit report. Please try again.',
+        type: 'error',
+        duration: 4000
+      })
     } finally {
       setUploading(false)
     }
@@ -369,7 +415,10 @@ export default function CreateIncident() {
                   try {
                     const { status } = await Location.requestForegroundPermissionsAsync()
                     if (status !== 'granted') {
-                      Alert.alert('Permission denied', 'Location permission is required to use GPS')
+                      showSnackbar({
+                        message: 'Location permission is required to use GPS',
+                        type: 'warning'
+                      })
                       return
                     }
 
@@ -397,7 +446,10 @@ export default function CreateIncident() {
                     }
                   } catch (error) {
                     console.error('Error getting GPS location:', error)
-                    Alert.alert('Error', 'Failed to get GPS location')
+                    showSnackbar({
+                        message: 'Failed to get GPS location',
+                        type: 'error'
+                    })
                   }
                 }}
               >
@@ -498,16 +550,19 @@ export default function CreateIncident() {
         <TouchableOpacity
           style={[
             styles.submitButton,
-            uploading && styles.submitButtonDisabled,
-            (!incidentType || !location.trim() || !description.trim()) && styles.submitButtonDisabled
+            uploading && styles.submitButtonLoading
           ]}
           onPress={handleSubmit}
-          disabled={uploading || !incidentType || !location.trim() || !description.trim()}
+          activeOpacity={0.8}
         >
-          <AlertTriangle size={22} color="#FFFFFF" />
-          <Text style={styles.submitButtonText}>
-            {uploading ? 'Submitting...' : 'Submit Report'}
-          </Text>
+          {uploading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color="#FFFFFF" />
+              <Text style={styles.submitButtonText}>Submitting...</Text>
+            </View>
+          ) : (
+            <Text style={styles.submitButtonText}>Submit Report</Text>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -865,27 +920,29 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   submitButton: {
-    backgroundColor: '#B03A2E',
+    backgroundColor: '#FF6B35',
     paddingVertical: 16,
     borderRadius: 12,
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    shadowColor: '#B03A2E',
+    marginTop: 24,
+    shadowColor: '#FF6B35',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
   },
-  submitButtonDisabled: {
-    backgroundColor: '#D1D5DB',
-    shadowOpacity: 0,
+  submitButtonLoading: {
+    opacity: 0.7, 
   },
   submitButtonText: {
     color: '#FFFFFF',
     fontSize: 17,
     fontWeight: '700',
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   locationInputContainer: {
     flexDirection: 'row',

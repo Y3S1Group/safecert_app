@@ -1,11 +1,13 @@
 import { auth, db } from '@/config/firebaseConfig'
 import { useRouter } from 'expo-router'
 import { collection, deleteDoc, doc, onSnapshot, orderBy, query, updateDoc, where } from 'firebase/firestore'
-import { AlertTriangle, Clock, Edit, Eye, MapPin, Plus, Search, Trash2, TrendingUp, FileText, Image as ImageIcon, Video } from 'lucide-react-native'
+import { AlertTriangle, Clock, Edit, Eye, MapPin, Plus, Search, Trash2, TrendingUp, FileText, Image as ImageIcon, Video, CheckCircle } from 'lucide-react-native'
 import React, { useEffect, useState } from 'react'
 import { Alert, FlatList, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import FloatingButton from '@/components/FloatingButton'
+import { useSnackbar } from '@/contexts/SnackbarContext'
+import { useAlert } from '@/contexts/AlertContext'
 
 interface Incident {
   id: string;
@@ -33,6 +35,8 @@ export default function Reports() {
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
+  const { showSnackbar } = useSnackbar()
+    const { showAlert } = useAlert()
 
   useEffect(() => {
     if (!auth.currentUser) return
@@ -75,26 +79,46 @@ export default function Reports() {
   }, [incidents, filterStatus, searchQuery])
 
   const handleDeleteIncident = async (incidentId: string) => {
-    Alert.alert(
-      'Delete Report',
-      'Are you sure you want to delete this incident report? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
+    showAlert({
+      message: 'Are you sure you want to delete this incident report? This action cannot be undone.',
+      icon: Trash2,
+      iconColor: '#EF4444' ,
+      iconBgColor: '#eeefeeff',
+      buttons: [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+          onPress: () => console.log('Cancelled')
+        },
         {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
             try {
               await deleteDoc(doc(db, 'incidents', incidentId))
-              Alert.alert('Success', 'Report deleted successfully')
+              showAlert({
+                      message: 'Report deleted successfully',
+                      icon: CheckCircle,
+                      iconColor: '#10B981',
+                      iconBgColor: '#D1FAE5',
+                      autoClose: true,
+                      autoCloseDelay: 2000
+                    })
+              
+                    setTimeout(() => {
+                      router.back()
+                    }, 2000)
             } catch (error) {
               console.error('Error deleting incident:', error)
-              Alert.alert('Error', 'Failed to delete report')
+              showSnackbar({
+                message: 'Failed to delete report',
+                type: 'error'
+              })
             }
           }
         }
       ]
-    )
+    })
   }
 
   const getStatusColor = (status: string) => {

@@ -1,13 +1,16 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image } from 'react-native'
 import React, { useState, useEffect } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { ArrowLeft, MapPin, Camera, X, Save, ChevronLeft, FileText, MapPinned } from 'lucide-react-native'
+import { ArrowLeft, MapPin, Camera, X, Save, ChevronLeft, FileText, MapPinned, CheckCircle } from 'lucide-react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
-import { db } from '@/config/firebaseConfig'
+import { auth, db } from '@/config/firebaseConfig'
 import * as ImagePicker from 'expo-image-picker'
 import * as Location from 'expo-location'
 import { UploadImageToClooudinary } from '@/config/cloudinaryConfig'
+import { useSnackbar } from '@/contexts/SnackbarContext'
+import { useAlert } from '@/contexts/AlertContext'
+import { sendNotification } from '@/utils/notifications'
 
 interface SelectedMedia {
   uri: string;
@@ -33,6 +36,8 @@ export default function EditIncident() {
   const [currentLocation, setCurrentLocation] = useState<LocationData | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const { showSnackbar } = useSnackbar()
+  const { showAlert } = useAlert()
 
   const incidentTypes = ['Injury', 'Near Miss', 'Hazard', 'Equipment Failure', 'Property Damage', 'Environmental']
   const priorities = [
@@ -159,54 +164,95 @@ export default function EditIncident() {
   }
 
   const handleSave = async () => {
-    if (!incidentType || !location.trim() || !description.trim()) {
-      Alert.alert('Error', 'Please fill in all required fields')
-      return
-    }
-
-    setSaving(true)
-
-    try {
-      const newImages = selectedImages.filter(img => img.isNew)
-      const existingImages = selectedImages.filter(img => !img.isNew)
-      
-      const newImageUrls: string[] = []
-      for (const img of newImages) {
-        try {
-          const url = await UploadImageToClooudinary(img.uri)
-          newImageUrls.push(url)
-        } catch (error) {
-          console.error('Failed to upload image:', error)
-        }
-      }
-
-      const allImageUrls = [
-        ...existingImages.map(img => img.uri),
-        ...newImageUrls
-      ]
-
-      const docRef = doc(db, 'incidents', id as string)
-      await updateDoc(docRef, {
-        incidentType,
-        location: location.trim(),
-        description: description.trim(),
-        priority,
-        status,
-        imageUrls: allImageUrls,
-        totalImages: allImageUrls.length,
-        updatedAt: serverTimestamp(),
-      })
-
-      Alert.alert('Success', 'Incident updated successfully', [
-        { text: 'OK', onPress: () => router.back() }
-      ])
-    } catch (error) {
-      console.error('Error updating incident:', error)
-      Alert.alert('Error', 'Failed to update incident')
-    } finally {
-      setSaving(false)
-    }
+  if (!incidentType || !location.trim() || !description.trim()) {
+    showSnackbar({
+      message: 'Please fill in all required fields',
+      type: 'error'
+    })
+    return
   }
+
+  setSaving(true)
+
+  try {
+    const newImages = selectedImages.filter(img => img.isNew)
+    const existingImages = selectedImages.filter(img => !img.isNew)
+    
+    const newImageUrls: string[] = []
+    for (const img of newImages) {
+      try {
+        const url = await UploadImageToClooudinary(img.uri)
+        newImageUrls.push(url)
+      } catch (error) {
+        console.error('Failed to upload image:', error)
+      }
+    }
+
+    const allImageUrls = [
+      ...existingImages.map(img => img.uri),
+      ...newImageUrls
+    ]
+
+    const docRef = doc(db, 'incidents', id as string)
+    const incidentDoc = await getDoc(docRef)
+    const incidentData = incidentDoc.data()
+
+    console.log('Incident data:', incidentData)
+    console.log('Current user UID:', auth.currentUser?.uid)
+    console.log('Reporter UID:', incidentData?.reportedByUid)
+
+    await updateDoc(docRef, {
+      incidentType,
+      location: location.trim(),
+      description: description.trim(),
+      priority,
+      status,
+      imageUrls: allImageUrls,
+      totalImages: allImageUrls.length,
+      updatedAt: serverTimestamp(),
+    })
+
+    // Always send notification for testing (remove the condition)
+    if (incidentData?.reportedByUid) {
+      console.log('About to send notification...')
+      try {
+        await sendNotification(
+          incidentData.reportedByUid,
+          'Report Updated',
+          `Your ${incidentType} report has been updated. Status: ${status}`,
+          'info'
+        )
+        console.log('Notification sent successfully!')
+      } catch (notifError) {
+        console.error('Error sending notification:', notifError)
+      }
+    } else {
+      console.log('No reportedByUid found in incident data')
+    }
+
+    showAlert({
+      message: 'Incident report has been updated successfully!',
+      icon: CheckCircle,
+      iconColor: '#10B981',
+      iconBgColor: '#D1FAE5',
+      autoClose: true,
+      autoCloseDelay: 2000
+    })
+
+    setTimeout(() => {
+      router.back()
+    }, 2000)
+
+  } catch (error) {
+    console.error('Error updating incident:', error)
+    showSnackbar({
+      message: 'Failed to update incident. Please try again.',
+      type: 'error'
+    })
+  } finally {
+    setSaving(false)
+  }
+}
 
   const getPriorityColor = (p: string): string => {
     switch (p) {

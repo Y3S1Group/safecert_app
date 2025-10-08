@@ -4,10 +4,13 @@ import { useRouter } from 'expo-router'
 import { auth, db } from '@/config/firebaseConfig';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { Bell, Building, ChevronRight, HelpCircle, LogOut, Mail, Phone, Shield, User } from 'lucide-react-native';
+import { Bell, Building, CheckCircle, ChevronRight, HelpCircle, HelpCircleIcon, LockIcon, LogOut, LogOutIcon, Mail, Phone, Shield, User } from 'lucide-react-native';
 import CustomModal from '@/components/CustomModal';
 import EditProfileForm from '@/components/EditProfileForm';
 import { ActivityIndicator } from 'react-native-paper';
+import CustomeAlert from '@/components/CustomeAlert';
+import { useAlert } from '@/contexts/AlertContext';
+import { useSnackbar } from '@/contexts/SnackbarContext';
 
 interface UserInfo {
   name: string;
@@ -29,6 +32,8 @@ export default function profile() {
     department: '',
     jobTitle: ''
   });
+  const { showAlert } = useAlert()
+  const { showSnackbar } = useSnackbar()
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -82,7 +87,10 @@ export default function profile() {
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
-      Alert.alert('Error', 'Failed to load user data');
+      showSnackbar({
+        message: 'Failed to load user data',
+        type: 'error'
+      })
     } finally {
       setLoading(false);
     }
@@ -93,28 +101,31 @@ export default function profile() {
   }
 
   const handleLogout = async () => {
-    Alert.alert(
-      'Log out', 'Are you sure you want to log out?',
-      [
+    showAlert({
+      message: 'Are you sure you want to log out?',
+      icon: LogOutIcon,
+      iconColor: '#FF6B35',
+      iconBgColor: '#FEE2E2',
+      buttons: [
         {
           text: 'Cancel',
           style: 'cancel',
+          onPress: () => console.log('Cancelled')
         },
         {
-          text: 'Log out',
+          text: 'Log Out',
           style: 'destructive',
           onPress: async () => {
             try {
-              await signOut(auth);
-              router.replace('/(auth)/authScreen');
+              await signOut(auth)
+              router.replace('/(auth)/authScreen')
             } catch (error) {
-              console.error('Error signing out:', error);
-              Alert.alert('Error', 'Failed to sign out');
+              console.error('Error signing out:', error)
             }
-          },
-        },
-      ],
-    );
+          }
+        }
+      ]
+    })
   };
 
   const handleEditProfile = () => {
@@ -143,10 +154,20 @@ export default function profile() {
         jobTitle: editForm.jobTitle
       } : null);
       setModalVisible(false);
-      Alert.alert('Success', 'Profile updated successfully');
+      showAlert({
+        message: 'Profile updated successfully',
+        icon: CheckCircle,
+        iconColor: '#10B981',
+        iconBgColor: '#D1FAE5',
+        autoClose: true,
+        autoCloseDelay: 2000
+      })
     } catch (error) {
       console.error('Error updating profile:', error);
-      Alert.alert('Error', 'Failed to update profile');
+      showSnackbar({
+        message: 'Failed to update profile',
+        type: 'error'
+      })
     }
   };
 
@@ -163,13 +184,34 @@ export default function profile() {
   };
 
   const handleNotifications = () => {
-    Alert.alert('Notifications', 'Notification settings coming soon!');
+    showAlert({
+      message: 'Notification settings coming soon! Stay tuned for updates.',
+      icon: Bell,
+      iconColor: '#FF6B35',
+      iconBgColor: '#eeefeeff',
+      autoClose: true,
+      autoCloseDelay: 1200
+    })
   };
   const handlePrivacySecurity = () => {
-    Alert.alert('Privacy & Security', 'Privacy settings coming soon!');
+    showAlert({
+      message: 'Privacy & Security settings coming soon!',
+      icon: LockIcon,
+      iconColor: '#FF6B35',
+      iconBgColor: '#eeefeeff',
+      autoClose: true,
+      autoCloseDelay: 1200
+    })
   };
   const handleHelpSupport = () => {
-    Alert.alert('Help & Support', 'Help center coming soon!');
+    showAlert({
+      message: 'Help & Support center coming soon!',
+      icon: HelpCircleIcon,
+      iconColor: '#FF6B35',
+      iconBgColor: '#eeefeeff',
+      autoClose: true,
+      autoCloseDelay: 1200
+    })
   };
 
 
