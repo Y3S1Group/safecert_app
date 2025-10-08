@@ -10,7 +10,6 @@ interface AlertButton {
 }
 
 interface AlertConfig {
-    title: string
     message: string
     icon?: any
     iconColor?: string
@@ -30,7 +29,6 @@ const AlertContext = createContext<AlertContextType | undefined>(undefined)
 export function AlertProvider({ children }: { children: ReactNode }) {
     const [alertConfig, setAlertConfig] = useState<AlertConfig & { visible: boolean }>({
         visible: false,
-        title: '',
         message: '',
         icon: Bell,
         iconColor: '#FF6B35',
@@ -54,7 +52,6 @@ export function AlertProvider({ children }: { children: ReactNode }) {
             <CustomeAlert
                 visible={alertConfig.visible}
                 onClose={hideAlert}
-                title={alertConfig.title}
                 message={alertConfig.message}
                 icon={alertConfig.icon}
                 iconColor={alertConfig.iconColor}
