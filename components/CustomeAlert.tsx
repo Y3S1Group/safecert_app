@@ -11,7 +11,6 @@ interface AlertButton {
 interface CustomeAlertProps {
     visible: boolean
     onClose: () => void
-    title: string
     message: string
     icon?: any
     iconColor?: string
@@ -24,14 +23,13 @@ interface CustomeAlertProps {
 export default function CustomeAlert({
     visible,
     onClose,
-    title,
     message,
     icon: Icon = Bell,
     iconColor = '#FF6B35',
     iconBgColor = '#EFF6FF',
     buttons,
     autoClose = false,
-    autoCloseDelay = 900
+    autoCloseDelay = 8000
 }: CustomeAlertProps) {
 
     useEffect(() => {
@@ -50,7 +48,7 @@ export default function CustomeAlert({
             case 'cancel':
                 return { backgroundColor: '#F3F4F6' }
             default:
-                return { backgroundColor: '#3B82F6' }
+                return { backgroundColor: '#FF6B35' }
         }
     }
 
@@ -77,10 +75,9 @@ export default function CustomeAlert({
                 <TouchableOpacity activeOpacity={1}>
                     <View style={styles.alertContainer}>
                         <View style={[styles.iconContainer, { backgroundColor: iconBgColor }]}>
-                            <Icon size={32} color={iconColor} />
+                            <Icon size={28} color={iconColor} />
                         </View>
 
-                        <Text style={styles.title}>{title}</Text>
                         <Text style={styles.message}>{message}</Text>
 
                         {buttons && buttons.length > 0 ? (
@@ -122,14 +119,14 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 20,
+        padding: 12,
     },
     alertContainer: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 32,
-        padding: 24,
+        borderRadius: 28,
+        padding: 20,
         width: '100%',
-        maxWidth: 310,
+        maxWidth: 320,
         alignItems: 'center',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 10 },
@@ -138,8 +135,8 @@ const styles = StyleSheet.create({
         elevation: 10,
     },
     iconContainer: {
-        width: 64,
-        height: 64,
+        width: 56,
+        height: 56,
         borderRadius: 32,
         justifyContent: 'center',
         alignItems: 'center',
@@ -167,7 +164,7 @@ const styles = StyleSheet.create({
     button: {
         backgroundColor: '#FF6B35',
         paddingVertical: 14,
-        paddingHorizontal: 32,
+        paddingHorizontal: 28,
         borderRadius: 12,
         width: '100%',
     },
