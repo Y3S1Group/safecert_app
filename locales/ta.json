@@ -1,0 +1,99 @@
+{
+  "common": {
+    "appName": "சேஃப்சர்ட்",
+    "loading": "ஏற்றுகிறது...",
+    "save": "சேமி",
+    "cancel": "ரத்து செய்",
+    "delete": "நீக்கு",
+    "edit": "திருத்து",
+    "submit": "சமர்ப்பி",
+    "confirm": "உறுதிப்படுத்து",
+    "back": "பின்",
+    "next": "அடுத்து",
+    "done": "முடிந்தது",
+    "yes": "ஆம்",
+    "no": "இல்லை"
+  },
+  "auth": {
+    "login": "உள்நுழைய",
+    "signup": "பதிவு செய்ய",
+    "email": "மின்னஞ்சல்",
+    "password": "கடவுச்சொல்",
+    "forgotPassword": "கடவுச்சொல்லை மறந்துவிட்டீர்களா?",
+    "loginSuccess": "உள்நுழைவு வெற்றிகரமாக",
+    "loginError": "உள்நுழைவு தோல்வி",
+    "logout": "வெளியேறு"
+  },
+  "onboarding": {
+    "welcome": "சேஃப்சர்ட் க்கு வரவேற்கிறோம்",
+    "getStarted": "தொடங்குங்கள்",
+    "skip": "தவிர்",
+    "feature1Title": "பாதுகாப்பு பயிற்சி",
+    "feature1Description": "விரிவான பாதுகாப்பு பயிற்சி பொருட்களை அணுகவும்",
+    "feature2Title": "சான்றிதழ் பெறுங்கள்",
+    "feature2Description": "பாடநெறிகளை முடித்தவுடன் சான்றிதழ்களை பெறுங்கள்",
+    "feature3Title": "சம்பவங்களை அறிவிக்கவும்",
+    "feature3Description": "விரைவான மற்றும் எளிதான சம்பவ அறிக்கை முறை"
+  },
+  "tabs": {
+    "certificates": "சான்றிதழ்கள்",
+    "profile": "சுயவிவரம்",
+    "report": "அறிக்கை",
+    "training": "பயிற்சி"
+  },
+  "training": {
+    "title": "பாதுகாப்பு பயிற்சி",
+    "myCourses": "எனது பாடநெறிகள்",
+    "availableCourses": "கிடைக்கும் பாடநெறிகள்",
+    "completed": "முடிந்தது",
+    "inProgress": "நடந்து வருகிறது",
+    "notStarted": "தொடங்கவில்லை",
+    "startCourse": "பாடநெறியைத் தொடங்குங்கள்",
+    "continueCourse": "தொடரவும்",
+    "readAloud": "உரக்கப் படிக்கவும்",
+    "stopReading": "படிப்பதை நிறுத்தவும்"
+  },
+  "certificates": {
+    "title": "எனது சான்றிதழ்கள்",
+    "earned": "பெற்ற சான்றிதழ்கள்",
+    "pending": "நிலுவையில்",
+    "download": "பதிவிறக்கு",
+    "share": "பகிர்",
+    "validUntil": "செல்லுபடியாகும் வரை",
+    "noCertificates": "இன்னும் சான்றிதழ்கள் இல்லை"
+  },
+  "incidents": {
+    "title": "சம்பவ அறிக்கை",
+    "newReport": "புதிய அறிக்கை",
+    "myReports": "எனது அறிக்கைகள்",
+    "description": "விளக்கம்",
+    "location": "இடம்",
+    "date": "தேதி",
+    "severity": "தீவிரம்",
+    "low": "குறைவு",
+    "medium": "நடுத்தர",
+    "high": "உயர்",
+    "critical": "முக்கியமான",
+    "submitReport": "அறிக்கையை சமர்ப்பிக்கவும்",
+    "editReport": "அறிக்கையை திருத்தவும்",
+    "reportSubmitted": "அறிக்கை வெற்றிகரமாக சமர்ப்பிக்கப்பட்டது"
+  },
+  "profile": {
+    "title": "சுயவிவரம்",
+    "editProfile": "சுயவிவரத்தை திருத்தவும்",
+    "name": "பெயர்",
+    "email": "மின்னஞ்சல்",
+    "phone": "தொலைபேசி",
+    "language": "மொழி",
+    "settings": "அமைப்புகள்",
+    "changeLanguage": "மொழியை மாற்றவும்",
+    "notifications": "அறிவிப்புகள்",
+    "privacy": "தனியுரிமை",
+    "about": "பற்றி"
+  },
+  "languages": {
+    "english": "ஆங்கிலம்",
+    "sinhala": "சிங்களம்",
+    "tamil": "தமிழ்"
+  }
+}

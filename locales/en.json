@@ -1,0 +1,99 @@
+{
+  "common": {
+    "appName": "SafeCert",
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "submit": "Submit",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "done": "Done",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "auth": {
+    "login": "Login",
+    "signup": "Sign Up",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot Password?",
+    "loginSuccess": "Login Successful",
+    "loginError": "Login Failed",
+    "logout": "Logout"
+  },
+  "onboarding": {
+    "welcome": "Welcome to SafeCert",
+    "getStarted": "Get Started",
+    "skip": "Skip",
+    "feature1Title": "Safety Training",
+    "feature1Description": "Access comprehensive safety training materials",
+    "feature2Title": "Get Certified",
+    "feature2Description": "Earn certificates upon completing courses",
+    "feature3Title": "Report Incidents",
+    "feature3Description": "Quick and easy incident reporting system"
+  },
+  "tabs": {
+    "certificates": "Certificates",
+    "profile": "Profile",
+    "report": "Report",
+    "training": "Training"
+  },
+  "training": {
+    "title": "Safety Training",
+    "myCourses": "My Courses",
+    "availableCourses": "Available Courses",
+    "completed": "Completed",
+    "inProgress": "In Progress",
+    "notStarted": "Not Started",
+    "startCourse": "Start Course",
+    "continueCourse": "Continue",
+    "readAloud": "Read Aloud",
+    "stopReading": "Stop Reading"
+  },
+  "certificates": {
+    "title": "My Certificates",
+    "earned": "Earned Certificates",
+    "pending": "Pending",
+    "download": "Download",
+    "share": "Share",
+    "validUntil": "Valid Until",
+    "noCertificates": "No certificates yet"
+  },
+  "incidents": {
+    "title": "Incident Report",
+    "newReport": "New Report",
+    "myReports": "My Reports",
+    "description": "Description",
+    "location": "Location",
+    "date": "Date",
+    "severity": "Severity",
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High",
+    "critical": "Critical",
+    "submitReport": "Submit Report",
+    "editReport": "Edit Report",
+    "reportSubmitted": "Report Submitted Successfully"
+  },
+  "profile": {
+    "title": "Profile",
+    "editProfile": "Edit Profile",
+    "name": "Name",
+    "email": "Email",
+    "phone": "Phone",
+    "language": "Language",
+    "settings": "Settings",
+    "changeLanguage": "Change Language",
+    "notifications": "Notifications",
+    "privacy": "Privacy",
+    "about": "About"
+  },
+  "languages": {
+    "english": "English",
+    "sinhala": "සිංහල",
+    "tamil": "தமிழ்"
+  }
+}

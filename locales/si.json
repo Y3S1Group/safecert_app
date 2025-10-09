@@ -1,0 +1,99 @@
+{
+  "common": {
+    "appName": "සේෆ්සර්ට්",
+    "loading": "පූරණය වෙමින්...",
+    "save": "සුරකින්න",
+    "cancel": "අවලංගු කරන්න",
+    "delete": "මකන්න",
+    "edit": "සංස්කරණය",
+    "submit": "ඉදිරිපත් කරන්න",
+    "confirm": "තහවුරු කරන්න",
+    "back": "ආපසු",
+    "next": "ඊළඟ",
+    "done": "අවසන්",
+    "yes": "ඔව්",
+    "no": "නැත"
+  },
+  "auth": {
+    "login": "ඇතුල් වන්න",
+    "signup": "ලියාපදිංචි වන්න",
+    "email": "විද්‍යුත් තැපෑල",
+    "password": "මුරපදය",
+    "forgotPassword": "මුරපදය අමතකද?",
+    "loginSuccess": "ඇතුල්වීම සාර්ථකයි",
+    "loginError": "ඇතුල්වීම අසාර්ථකයි",
+    "logout": "ඉවත් වන්න"
+  },
+  "onboarding": {
+    "welcome": "සේෆ්සර්ට් වෙත සාදරයෙන් පිළිගනිමු",
+    "getStarted": "ආරම්භ කරන්න",
+    "skip": "මඟ හරින්න",
+    "feature1Title": "ආරක්ෂණ පුහුණුව",
+    "feature1Description": "විස්තීර්ණ ආරක්ෂණ පුහුණු ද්‍රව්‍ය වෙත ප්‍රවේශය",
+    "feature2Title": "සහතික ලබා ගන්න",
+    "feature2Description": "පාඨමාලා සම්පූර්ණ කිරීමෙන් සහතික ලබා ගන්න",
+    "feature3Title": "සිදුවීම් වාර්තා කරන්න",
+    "feature3Description": "ඉක්මන් හා පහසු සිදුවීම් වාර්තා කිරීමේ පද්ධතිය"
+  },
+  "tabs": {
+    "certificates": "සහතික",
+    "profile": "පැතිකඩ",
+    "report": "වාර්තාව",
+    "training": "පුහුණුව"
+  },
+  "training": {
+    "title": "ආරක්ෂණ පුහුණුව",
+    "myCourses": "මගේ පාඨමාලා",
+    "availableCourses": "ලබා ගත හැකි පාඨමාලා",
+    "completed": "සම්පූර්ණ කළ",
+    "inProgress": "ක්‍රියාත්මක",
+    "notStarted": "ආරම්භ නොකළ",
+    "startCourse": "පාඨමාලාව ආරම්භ කරන්න",
+    "continueCourse": "දිගටම කරන්න",
+    "readAloud": "හයියෙන් කියවන්න",
+    "stopReading": "කියවීම නවත්වන්න"
+  },
+  "certificates": {
+    "title": "මගේ සහතික",
+    "earned": "ලබාගත් සහතික",
+    "pending": "අපේක්ෂාවෙන්",
+    "download": "බාගන්න",
+    "share": "බෙදා ගන්න",
+    "validUntil": "වලංගු දිනය",
+    "noCertificates": "තවමත් සහතික නැත"
+  },
+  "incidents": {
+    "title": "සිදුවීම් වාර්තාව",
+    "newReport": "නව වාර්තාව",
+    "myReports": "මගේ වාර්තා",
+    "description": "විස්තරය",
+    "location": "ස්ථානය",
+    "date": "දිනය",
+    "severity": "බරපතලකම",
+    "low": "අඩු",
+    "medium": "මධ්‍යම",
+    "high": "ඉහළ",
+    "critical": "විවේචනාත්මක",
+    "submitReport": "වාර්තාව ඉදිරිපත් කරන්න",
+    "editReport": "වාර්තාව සංස්කරණය කරන්න",
+    "reportSubmitted": "වාර්තාව සාර්ථකව ඉදිරිපත් කරන ලදී"
+  },
+  "profile": {
+    "title": "පැතිකඩ",
+    "editProfile": "පැතිකඩ සංස්කරණය කරන්න",
+    "name": "නම",
+    "email": "විද්‍යුත් තැපෑල",
+    "phone": "දුරකථනය",
+    "language": "භාෂාව",
+    "settings": "සැකසුම්",
+    "changeLanguage": "භාෂාව වෙනස් කරන්න",
+    "notifications": "දැනුම්දීම්",
+    "privacy": "පෞද්ගලිකත්වය",
+    "about": "පිළිබඳව"
+  },
+  "languages": {
+    "english": "ඉංග්‍රීසි",
+    "sinhala": "සිංහල",
+    "tamil": "දෙමළ"
+  }
+}
