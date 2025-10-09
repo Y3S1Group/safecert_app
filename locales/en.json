@@ -12,7 +12,10 @@
     "next": "Next",
     "done": "Done",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "notProvided": "Not Provided",
+    "notAssigned": "Not Assigned",
+    "errorLoadingData": "Error loading data"
   },
   "auth": {
     "login": "Login",
@@ -88,8 +91,26 @@
     "settings": "Settings",
     "changeLanguage": "Change Language",
     "notifications": "Notifications",
-    "privacy": "Privacy",
-    "about": "About"
+    "privacy": "Privacy & Security",
+    "about": "About",
+    "fullName": "Full Name",
+    "department": "Department",
+    "personalInfo": "Personal Information",
+    "employee": "Employee",
+    "logoutConfirm": "Are you sure you want to log out?",
+    "updateSuccess": "Profile updated successfully",
+    "updateError": "Failed to update profile",
+    "unableToLoad": "Unable to load profile",
+    "switchAccount": "Switch Account",
+    "switchConfirm": "Are you sure you want to switch to your Teacher account?",
+    "switch": "Switch",
+    "switchToInstructor": "Switch to Instructor Account",
+    "notificationsComingSoon": "Notification settings coming soon! Stay tuned for updates.",
+    "privacyComingSoon": "Privacy & Security settings coming soon!",
+    "helpComingSoon": "Help & Support center coming soon!",
+    "helpSupport": "Help & Support",
+    "appVersion": "Safety App v1.0.0",
+    "copyright": "© 2025 Safety First Inc."
   },
   "languages": {
     "english": "English",

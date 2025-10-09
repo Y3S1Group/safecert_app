@@ -12,7 +12,10 @@
     "next": "அடுத்து",
     "done": "முடிந்தது",
     "yes": "ஆம்",
-    "no": "இல்லை"
+    "no": "இல்லை",
+    "notProvided": "வழங்கப்படவில்லை",
+    "notAssigned": "ஒதுக்கப்படவில்லை",
+    "errorLoadingData": "தரவு ஏற்ற தோல்வியுற்றது"
   },
   "auth": {
     "login": "உள்நுழைய",
@@ -89,7 +92,25 @@
     "changeLanguage": "மொழியை மாற்றவும்",
     "notifications": "அறிவிப்புகள்",
     "privacy": "தனியுரிமை",
-    "about": "பற்றி"
+    "about": "பற்றி",
+    "fullName": "முழுப் பெயர்",
+    "department": "துறை",
+    "personalInfo": "தனிப்பட்ட தகவல்",
+    "employee": "பணியாளர்",
+    "logoutConfirm": "வெளியேற உறுதியாக உள்ளீர்களா?",
+    "updateSuccess": "சுயவிவரம் வெற்றிகரமாக புதுப்பிக்கப்பட்டது",
+    "updateError": "சுயவிவரத்தை புதுப்பிக்க முடியவில்லை",
+    "unableToLoad": "சுயவிவரம் ஏற்ற முடியவில்லை",
+    "switchAccount": "கணக்கை மாற்றவும்",
+    "switchConfirm": "கற்பித்தல் கணக்கிற்கு மாற்ற உறுதியாக உள்ளீர்களா?",
+    "switch": "மாற்றவும்",
+    "switchToInstructor": "கற்பித்தல் கணக்கிற்கு மாற்றவும்",
+    "notificationsComingSoon": "அறிவிப்பு அமைப்புகள் விரைவில்!",
+    "privacyComingSoon": "தனியுரிமை & பாதுகாப்பு அமைப்புகள் விரைவில்!",
+    "helpComingSoon": "உதவி & ஆதரவு விரைவில்!",
+    "helpSupport": "உதவி & ஆதரவு",
+    "appVersion": "பாதுகாப்பு செயலி v1.0.0",
+    "copyright": "© 2025 Safety First Inc."
   },
   "languages": {
     "english": "ஆங்கிலம்",
