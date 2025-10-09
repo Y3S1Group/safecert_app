@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native'
+import { View, Alert, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native'
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -8,16 +8,58 @@ import {
   Award, 
   AlertTriangle, 
   Clock, 
-  TrendingUp, 
   CheckCircle,
-  Calendar,
   Users,
-  Shield
+  Shield,
+  Sparkles,
+  ArrowRight,
+  TrendingUp,
+  Hourglass
 } from 'lucide-react-native'
 import { auth, db } from '@/config/firebaseConfig'
 import { onAuthStateChanged } from 'firebase/auth'
-import { doc, getDoc } from 'firebase/firestore'
-import { collection, query, where, onSnapshot } from 'firebase/firestore'
+import { doc, getDoc, collection, arrayUnion, query, where, onSnapshot, getDocs, updateDoc } from 'firebase/firestore'
+import { getAIRecommendations } from '@/config/recommendationService'
+import { useAlert } from '@/contexts/AlertContext'
+
+const SAFETY_TIPS = [
+  "Always wear proper PPE when entering construction zones. Your safety is our priority.",
+  "Never bypass safety guards on machinery. They are there to protect you.",
+  "Report all near-miss incidents immediately. Prevention starts with awareness.",
+  "Keep emergency exits clear at all times. Lives depend on quick evacuation.",
+  "Inspect your tools and equipment before each use. Damaged tools can be deadly.",
+  "Stay hydrated and take regular breaks, especially in hot weather conditions.",
+  "Follow the lockout/tagout procedures before servicing equipment.",
+  "Use the buddy system when working in confined spaces.",
+  "Keep your work area clean and organized to prevent trips and falls.",
+  "Never use damaged electrical cords or equipment. Report them immediately.",
+  "Wear high-visibility clothing when working near moving vehicles or equipment.",
+  "Always use three points of contact when climbing ladders.",
+  "Read and understand Safety Data Sheets (SDS) before handling chemicals.",
+  "Never remove safety labels or warning signs from equipment.",
+  "Report workplace hazards to your supervisor immediately.",
+  "Ensure proper ventilation when working with fumes or in enclosed spaces.",
+  "Store flammable materials in designated areas away from ignition sources.",
+  "Use proper lifting techniques: bend your knees, keep your back straight.",
+  "Attend all safety training sessions. Knowledge saves lives.",
+  "If you're unsure about a task, ask for help. It's better to be safe than sorry.",
+  "Check fire extinguisher locations and ensure they are accessible.",
+  "Secure all loose objects before working at heights to prevent falling hazards.",
+  "Follow traffic rules when operating forklifts or other industrial vehicles.",
+  "Never work under fatigue. Rest is crucial for safe operations.",
+  "Use hearing protection in high-noise environments to prevent hearing loss.",
+  "Verify that all safety equipment is certified and within expiration dates.",
+  "Follow proper hand hygiene after handling hazardous materials.",
+  "Stay alert and avoid distractions while operating machinery.",
+  "Participate in emergency drills and know your evacuation routes.",
+  "Report any unsafe working conditions to management immediately.",
+  "Ensure proper grounding of electrical equipment to prevent shocks."
+];
+
+const getTipOfTheDay = () => {
+  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
+  return SAFETY_TIPS[dayOfYear % SAFETY_TIPS.length];
+};
 
 interface UserInfo {
   name: string;
@@ -26,69 +68,187 @@ interface UserInfo {
 
 interface DashboardStats {
   completedTrainings: number;
-  activeCertifications: number;
   pendingTrainings: number;
   reportsSubmitted: number;
 }
 
+interface Course {
+  id: string;
+  title: string;
+  description: string;
+  subtopicsCount?: number;
+}
+
+interface Recommendation {
+  courseId: string;
+  reason: string;
+  relevanceScore: number;
+}
+
 export default function Home() {
   const router = useRouter();
+  const { showAlert } = useAlert();
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [stats, setStats] = useState<DashboardStats>({
-    completedTrainings: 12,
-    activeCertifications: 5,
-    pendingTrainings: 3,
-    reportsSubmitted: 2
+    completedTrainings: 0,
+    pendingTrainings: 0,
+    reportsSubmitted: 0
   });
-  const [unreadNotifications, setUnreadNotifications] = useState(0)
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [loadingRecommendations, setLoadingRecommendations] = useState(false);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [enrolledCourseIds, setEnrolledCourseIds] = useState<string[]>([]);
+  const [tipOfTheDay, setTipOfTheDay] = useState('');
+  const [lastFetchDate, setLastFetchDate] = useState<string>('');
+  const [lastEnrollmentState, setLastEnrollmentState] = useState<string>('');
+
+  const handleQuickEnrollment = async (courseId: string, courseTitle: string) => {
+    const user = auth.currentUser;
+    if (!user || !user.email) {
+      showAlert({
+        message: 'Please log in to enroll in courses',
+        icon: AlertTriangle,
+        iconColor: '#EF4444',
+        iconBgColor: '#FEE2E2',
+        buttons: [
+          { text: 'OK', onPress: () => {}, style: 'default' }
+        ]
+      });
+      return;
+    }
+
+    try {
+      const userDocRef = doc(db, 'users', user.email);
+      
+      await updateDoc(userDocRef, {
+        courses: arrayUnion(courseId)
+      });
+
+      showAlert({
+        message: `Successfully enrolled in "${courseTitle}"! Opening course...`,
+        icon: CheckCircle,
+        iconColor: '#10B981',
+        iconBgColor: '#D1FAE5',
+        autoClose: true,
+        autoCloseDelay: 2000
+      });
+
+      // Navigate to course after 2 seconds
+      setTimeout(() => {
+        router.push(`/course/${courseId}` as any);
+      }, 2000);
+
+    } catch (error) {
+      console.error('Error enrolling:', error);
+      showAlert({
+        message: 'Failed to enroll in course. Please try again.',
+        icon: AlertTriangle,
+        iconColor: '#EF4444',
+        iconBgColor: '#FEE2E2',
+        buttons: [
+          { text: 'OK', onPress: () => {}, style: 'default' }
+        ]
+      });
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        await fetchUserData(user.email || '');
+      if (user && user.email) {
+        await fetchUserData(user.email);
+        await fetchRealStats(user.email, user.uid);
       }
     });
     return () => unsubscribe();
   }, []);
 
-  useEffect(()=> {
-    let unsubscribeReports: (() => void) | undefined;
-
-    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        await fetchUserData(user.email || '');
-
-        const q = query(
-          collection(db, 'incidents'),
-          where('reportedByUid', '==', user.uid)
-        );
-
-        unsubscribeReports = onSnapshot(q, (snapshot) => {
-          setStats(prev => ({
-            ...prev,
-            reportsSubmitted: snapshot.size
-          }));
-        });
-      }
-    });
+  useEffect(() => {
+    setTipOfTheDay(getTipOfTheDay());
   }, []);
 
-
   useEffect(() => {
-    if (!auth.currentUser) return 
+    if (!auth.currentUser) return;
 
     const q = query(
       collection(db, 'notifications'),
       where('userId', '==', auth.currentUser.uid),
       where('read', '==', false)
-    )
+    );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setUnreadNotifications(snapshot.size)
-    })
+      setUnreadNotifications(snapshot.size);
+    });
 
-    return () => unsubscribe()
-  }, [])
+    return () => unsubscribe();
+  }, []);
+
+  // Fetch courses
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(db, 'courses'),
+      (snapshot) => {
+        const coursesList: Course[] = [];
+        snapshot.forEach((doc) => {
+          coursesList.push({ id: doc.id, ...doc.data() } as Course);
+        });
+        setCourses(coursesList);
+      }
+    );
+    return () => unsubscribe();
+  }, []);
+
+  // Fetch AI recommendations with caching
+  useEffect(() => {
+    const fetchRecommendations = async () => {
+      if (enrolledCourseIds.length === 0 || courses.length === 0) {
+        setRecommendations([]);
+        return;
+      }
+
+      // Check if we already fetched today
+      const today = new Date().toDateString();
+      const enrollmentKey = enrolledCourseIds.sort().join(',');
+      
+      // Use cache if: same day AND same enrollments AND have recommendations
+      if (
+        lastFetchDate === today && 
+        lastEnrollmentState === enrollmentKey && 
+        recommendations.length > 0
+      ) {
+        console.log('Using cached AI recommendations');
+        return; // Skip API call
+      }
+
+      // Check if only enrollment changed (not the date)
+      if (lastEnrollmentState === enrollmentKey && recommendations.length > 0) {
+        console.log('Enrollments unchanged, using cached recommendations');
+        return;
+      }
+
+      console.log('Fetching fresh AI recommendations from Gemini...');
+      setLoadingRecommendations(true);
+
+      try {
+        const enrolled = courses.filter(c => enrolledCourseIds.includes(c.id));
+        const available = courses.filter(c => !enrolledCourseIds.includes(c.id));
+
+        if (enrolled.length > 0 && available.length > 0) {
+          const recs = await getAIRecommendations(enrolled, available);
+          setRecommendations(recs);
+          setLastFetchDate(today);
+          setLastEnrollmentState(enrollmentKey);
+          console.log('AI recommendations cached successfully');
+        }
+      } catch (error) {
+        console.error('Error fetching recommendations:', error);
+      } finally {
+        setLoadingRecommendations(false);
+      }
+    };
+
+    fetchRecommendations();
+  }, [enrolledCourseIds, courses]);
 
   const fetchUserData = async (email: string) => {
     try {
@@ -99,9 +259,63 @@ export default function Home() {
           name: userData.name || 'User',
           department: userData.department || 'Not assigned'
         });
+        setEnrolledCourseIds(userData.courses || []);
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
+    }
+  };
+
+  const fetchRealStats = async (email: string, uid: string) => {
+    try {
+      // Fetch user's enrolled courses
+      const userDoc = await getDoc(doc(db, 'users', email));
+      const enrolledIds = userDoc.exists() ? (userDoc.data().courses || []) : [];
+
+      // Fetch completed trainings
+      const progressSnapshot = await getDocs(
+        collection(db, 'users', email, 'courseProgress')
+      );
+
+      let completedCount = 0;
+      let pendingCount = 0;
+
+      progressSnapshot.forEach((progressDoc) => {
+        const data = progressDoc.data();
+        const courseId = progressDoc.id;
+        
+        // Find the course to get subtopics count
+        const course = courses.find(c => c.id === courseId);
+        const totalSubtopics = course?.subtopicsCount || 0;
+        const completedSubtopics = (data.completedSubtopics || []).length;
+
+        if (totalSubtopics > 0 && completedSubtopics === totalSubtopics) {
+          completedCount++;
+        } else if (completedSubtopics > 0) {
+          pendingCount++;
+        }
+      });
+
+      // Add courses with no progress started
+      const coursesWithNoProgress = enrolledIds.filter((id: string) => {
+        return !progressSnapshot.docs.find(doc => doc.id === id);
+      });
+      pendingCount += coursesWithNoProgress.length;
+
+      // Fetch reports count
+      const reportsQuery = query(
+        collection(db, 'incidents'),
+        where('reportedByUid', '==', uid)
+      );
+      const reportsSnapshot = await getDocs(reportsQuery);
+
+      setStats({
+        completedTrainings: completedCount,
+        pendingTrainings: pendingCount,
+        reportsSubmitted: reportsSnapshot.size
+      });
+    } catch (error) {
+      console.error('Error fetching stats:', error);
     }
   };
 
@@ -124,15 +338,6 @@ export default function Home() {
       onPress: () => router.push('/training')
     },
     {
-      id: 'certificates',
-      title: 'View Certificates',
-      subtitle: 'Check status',
-      icon: Award,
-      color: '#1B365D',
-      bgColor: 'rgba(27, 54, 93, 0.1)',
-      onPress: () => router.push('/_sitemap')
-    },
-    {
       id: 'report',
       title: 'Report Incident',
       subtitle: 'Quick reporting',
@@ -140,6 +345,15 @@ export default function Home() {
       color: '#B03A2E',
       bgColor: 'rgba(176, 58, 46, 0.1)',
       onPress: () => router.push('/incidents/new' as any)
+    },
+    {
+      id: 'certificates',
+      title: 'View Certificates',
+      subtitle: 'Check status',
+      icon: Award,
+      color: '#1B365D',
+      bgColor: 'rgba(27, 54, 93, 0.1)',
+      onPress: () => router.push('/_sitemap')
     },
     {
       id: 'profile',
@@ -152,33 +366,6 @@ export default function Home() {
     }
   ];
 
-  const recentActivity = [
-    {
-      id: 1,
-      title: 'Completed: Fire Safety Training',
-      time: '2 hours ago',
-      type: 'training',
-      icon: CheckCircle,
-      color: '#16A085'
-    },
-    {
-      id: 2,
-      title: 'Certificate Renewal Reminder',
-      time: '1 day ago',
-      type: 'certificate',
-      icon: Clock,
-      color: '#F39C12'
-    },
-    {
-      id: 3,
-      title: 'Safety Report Submitted',
-      time: '3 days ago',
-      type: 'report',
-      icon: Shield,
-      color: '#3498DB'
-    }
-  ];
-
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
@@ -188,7 +375,6 @@ export default function Home() {
             <Text style={styles.greeting}>
               {getGreeting()}, {userInfo?.name?.split(' ')[0] || 'User'}!
             </Text>
-            {/* <Text style={styles.department}>{userInfo?.department}</Text> */}
           </View>
           <TouchableOpacity 
             style={styles.notificationButton}
@@ -207,42 +393,59 @@ export default function Home() {
 
         {/* Dashboard Stats */}
         <View style={styles.statsContainer}>
-          <Text style={styles.sectionTitle}>Your Progress</Text>
-          <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <View style={[styles.statIcon, { backgroundColor: 'rgba(255, 107, 53, 0.1)' }]}>
-                <BookOpen size={24} color="#FF6B35" />
+          <View style={styles.recommendationsHeader}>
+            <TrendingUp style={{marginBottom: 10}} size={24} color="#FF6B35" />
+            <Text style={styles.sectionTitle}>Your Progress</Text>
+          </View>
+          <View style={styles.statsCard}>
+            <View style={styles.statRow}>
+              <View style={styles.statItem}>
+                <View style={[styles.statIcon, { backgroundColor: 'rgba(255, 107, 53, 0.1)' }]}>
+                  <BookOpen size={24} color="#FF6B35" />
+                </View>
+                <View style={styles.statContent}>
+                  <Text style={styles.statNumber}>{stats.completedTrainings}</Text>
+                  <Text style={styles.statLabel}>Courses Completed</Text>
+                </View>
               </View>
-              <Text style={styles.statNumber}>{stats.completedTrainings}</Text>
-              <Text style={styles.statLabel}>Trainings Completed</Text>
             </View>
-            <View style={styles.statCard}>
-              <View style={[styles.statIcon, { backgroundColor: 'rgba(27, 54, 93, 0.1)' }]}>
-                <Award size={24} color="#1B365D" />
+            
+            <View style={styles.statDivider} />
+            
+            <View style={styles.statRow}>
+              <View style={styles.statItem}>
+                <View style={[styles.statIcon, { backgroundColor: 'rgba(241, 196, 15, 0.1)' }]}>
+                  <Clock size={24} color="#F1C40F" />
+                </View>
+                <View style={styles.statContent}>
+                  <Text style={styles.statNumber}>{stats.pendingTrainings}</Text>
+                  <Text style={styles.statLabel}>Pending Courses</Text>
+                </View>
               </View>
-              <Text style={styles.statNumber}>{stats.activeCertifications}</Text>
-              <Text style={styles.statLabel}>Active Certificates</Text>
             </View>
-            <View style={styles.statCard}>
-              <View style={[styles.statIcon, { backgroundColor: 'rgba(241, 196, 15, 0.1)' }]}>
-                <Clock size={24} color="#F1C40F" />
+            
+            <View style={styles.statDivider} />
+            
+            <View style={styles.statRow}>
+              <View style={styles.statItem}>
+                <View style={[styles.statIcon, { backgroundColor: 'rgba(176, 58, 46, 0.1)' }]}>
+                  <AlertTriangle size={24} color="#B03A2E" />
+                </View>
+                <View style={styles.statContent}>
+                  <Text style={styles.statNumber}>{stats.reportsSubmitted}</Text>
+                  <Text style={styles.statLabel}>Reports Submitted</Text>
+                </View>
               </View>
-              <Text style={styles.statNumber}>{stats.pendingTrainings}</Text>
-              <Text style={styles.statLabel}>Pending Trainings</Text>
-            </View>
-            <View style={styles.statCard}>
-              <View style={[styles.statIcon, { backgroundColor: 'rgba(176, 58, 46, 0.1)' }]}>
-                <AlertTriangle size={24} color="#B03A2E" />
-              </View>
-              <Text style={styles.statNumber}>{stats.reportsSubmitted}</Text>
-              <Text style={styles.statLabel}>Reports Submitted</Text>
             </View>
           </View>
         </View>
 
         {/* Quick Actions */}
         <View style={styles.quickActionsContainer}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <View style={styles.recommendationsHeader}>
+            <Hourglass style={{marginBottom: 14}} size={24} color="#FF6B35" />
+            <Text style={styles.sectionTitle}>Quick Actions</Text>
+          </View>
           <View style={styles.actionsGrid}>
             {quickActions.map((action) => {
               const IconComponent = action.icon;
@@ -264,26 +467,100 @@ export default function Home() {
           </View>
         </View>
 
-        {/* Recent Activity */}
-        <View style={styles.recentActivityContainer}>
-          <Text style={styles.sectionTitle}>Recent Activity</Text>
-          <View style={styles.activityList}>
-            {recentActivity.map((activity) => {
-              const IconComponent = activity.icon;
-              return (
-                <View key={activity.id} style={styles.activityItem}>
-                  <View style={[styles.activityIcon, { backgroundColor: `${activity.color}20` }]}>
-                    <IconComponent size={20} color={activity.color} />
-                  </View>
-                  <View style={styles.activityContent}>
-                    <Text style={styles.activityTitle}>{activity.title}</Text>
-                    <Text style={styles.activityTime}>{activity.time}</Text>
-                  </View>
-                </View>
-              );
-            })}
+        {/* AI Course Recommendations */}
+        {enrolledCourseIds.length > 0 && (
+          <View style={styles.recommendationsContainer}>
+            <View style={styles.recommendationsHeader}>
+              <Sparkles style={{marginBottom: 10}} size={24} color="#FF6B35" />
+              <Text style={styles.sectionTitle}>AI Recommended Courses</Text>
+            </View>
+            
+            {loadingRecommendations ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#FF6B35" />
+                <Text style={styles.loadingText}>Finding perfect courses...</Text>
+              </View>
+            ) : recommendations.length > 0 ? (
+              <View style={styles.recommendationsList}>
+                {recommendations.map((rec, index) => {
+                  const course = courses.find(c => c.id === rec.courseId);
+                  if (!course) return null;
+
+                  return (
+                    <TouchableOpacity
+                      key={index}
+                      style={styles.recommendationCard}
+                      onPress={async () => {
+                        // Check enrollment status from Firebase directly
+                        const user = auth.currentUser;
+                        if (!user || !user.email) return;
+
+                        try {
+                          const userDoc = await getDoc(doc(db, 'users', user.email));
+                          const enrolledIds = userDoc.exists() ? (userDoc.data().courses || []) : [];
+                          const isEnrolled = enrolledIds.includes(rec.courseId);
+                          
+                          if (isEnrolled) {
+                            // User is already enrolled, go directly to course
+                            router.push(`/course/${rec.courseId}` as any);
+                          } else {
+                            // User not enrolled, show enrollment modal
+                            showAlert({
+                              message: `Would you like to enroll in "${course.title}"?`,
+                              icon: BookOpen,
+                              iconColor: '#FF6B35',
+                              iconBgColor: '#FFF5F2',
+                              buttons: [
+                                {
+                                  text: 'Cancel',
+                                  onPress: () => {},
+                                  style: 'cancel'
+                                },
+                                {
+                                  text: 'Enroll Now',
+                                  onPress: () => handleQuickEnrollment(rec.courseId, course.title),
+                                  style: 'default'
+                                }
+                              ]
+                            });
+                          }
+                        } catch (error) {
+                          console.error('Error checking enrollment:', error);
+                        }
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.recommendationHeader}>
+                        <View style={styles.recommendationBadge}>
+                          <Sparkles size={12} color="#F59E0B" />
+                          <Text style={styles.recommendationScore}>
+                            {Math.round(rec.relevanceScore * 100)}% match
+                          </Text>
+                        </View>
+                        <ArrowRight size={20} color="#9CA3AF" />
+                      </View>
+                      
+                      <Text style={styles.recommendationTitle} numberOfLines={2}>
+                        {course.title}
+                      </Text>
+                      
+                      <Text style={styles.recommendationReason} numberOfLines={2}>
+                        {rec.reason}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ) : (
+              <View style={styles.emptyRecommendations}>
+                <BookOpen size={32} color="#D1D5DB" />
+                <Text style={styles.emptyRecommendationsText}>
+                  Complete more courses to get personalized recommendations
+                </Text>
+              </View>
+            )}
           </View>
-        </View>
+        )}
 
         {/* Safety Tip of the Day */}
         <View style={styles.tipContainer}>
@@ -292,7 +569,7 @@ export default function Home() {
             <Text style={styles.tipTitle}>Safety Tip of the Day</Text>
           </View>
           <Text style={styles.tipContent}>
-            Always wear proper PPE when entering construction zones. Your safety is our priority.
+            {tipOfTheDay}
           </Text>
         </View>
       </ScrollView>
@@ -328,10 +605,6 @@ const styles = StyleSheet.create({
     color: '#111827',
     marginBottom: 4,
   },
-  department: {
-    fontSize: 16,
-    color: '#6B7280',
-  },
   notificationButton: {
     padding: 8,
     borderRadius: 20,
@@ -366,45 +639,51 @@ const styles = StyleSheet.create({
     color: '#111827',
     marginBottom: 16,
   },
-  statsContainer: {
-    marginBottom: 32,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  statCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+  statsCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
     padding: 16,
-    width: '48%',
-    marginBottom: 12,
-    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
-  statIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  statsContainer: {
+    marginBottom: 32,
+  },
+  statRow: {
+    paddingVertical: 0,
+  },
+  statItem: {
+    flexDirection: 'row',
     alignItems: 'center',
+  },
+  statIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     justifyContent: 'center',
-    marginBottom: 12,
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  statContent: {
+    flex: 1,
   },
   statNumber: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 4,
+    color: '#1B365D',
+    marginBottom: 2,
   },
   statLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    textAlign: 'center',
+    fontSize: 14,
+    color: '#666',
+  },
+  statDivider: {
+    height: 1,
+    backgroundColor: '#E8E8E8',
+    marginVertical: 8,
   },
   quickActionsContainer: {
     marginBottom: 32,
@@ -415,24 +694,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   actionCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
     width: '48%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
     marginBottom: 12,
-    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 2,
   },
   actionIcon: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 12,
   },
   actionTitle: {
@@ -440,80 +718,120 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#111827',
     marginBottom: 4,
-    textAlign: 'center',
   },
   actionSubtitle: {
     fontSize: 12,
     color: '#6B7280',
-    textAlign: 'center',
   },
-  recentActivityContainer: {
+  recommendationsContainer: {
     marginBottom: 32,
   },
-  activityList: {
+  recommendationsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
+  loadingContainer: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 12,
+    padding: 32,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  recommendationsList: {
+    gap: 12,
+  },
+  recommendationCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
     padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 2,
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF6B35',
   },
-  activityItem: {
+  recommendationHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  recommendationBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
   },
-  activityIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
+  recommendationScore: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#F59E0B',
   },
-  activityContent: {
-    flex: 1,
-  },
-  activityTitle: {
-    fontSize: 14,
-    fontWeight: '500',
+  recommendationTitle: {
+    fontSize: 16,
+    fontWeight: '700',
     color: '#111827',
-    marginBottom: 2,
+    marginBottom: 8,
   },
-  activityTime: {
-    fontSize: 12,
+  recommendationReason: {
+    fontSize: 13,
     color: '#6B7280',
+    lineHeight: 18,
   },
-  tipContainer: {
+  emptyRecommendations: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    borderLeftWidth: 4,
-    borderLeftColor: '#16A085',
+    borderRadius: 12,
+    padding: 32,
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 2,
+  },
+  emptyRecommendationsText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  tipContainer: {
+    backgroundColor: '#D1F2EB',
+    borderRadius: 12,
+    padding: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#16A085',
   },
   tipHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
     marginBottom: 8,
   },
   tipTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#16A085',
-    marginLeft: 8,
   },
   tipContent: {
     fontSize: 14,
-    color: '#374151',
+    color: '#0E6655',
     lineHeight: 20,
   },
 });
