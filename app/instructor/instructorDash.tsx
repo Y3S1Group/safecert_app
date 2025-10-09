@@ -19,7 +19,7 @@ export default function TeacherDashboard() {
   };
 
   const handleCreateCourse = () => {
-    router.replace('/course/create');
+    router.replace('/instructor/editCourse');
   };
 
   return (

@@ -9,6 +9,7 @@ import { uploadPDFToCloudinary, validateCloudinaryConfig } from '../../config/cl
 import { SubtopicForm } from "../../types/course";
 import { router } from 'expo-router';
 import { ArrowLeft, FileText, Trash2 } from 'lucide-react-native';
+import Stepper from '@/components/stepper';
 
 export default function CreateCourse() {
   const [title, setTitle] = useState('');
@@ -155,7 +156,22 @@ export default function CreateCourse() {
       Alert.alert(
         'Success', 
         'Course created successfully!',
-        [{ text: 'OK', onPress: () => router.back() }]
+        [
+          {
+            text: 'Create Certificate Now',
+            onPress: () =>
+              router.push({
+                pathname: '/certificate/certificates',
+                params: { courseId: courseRef.id },
+              }),
+          },
+          {
+            text: 'Finish',
+            onPress: () => router.back(),
+            style: 'cancel',
+          },
+        ],
+        { cancelable: true }
       );
 
       // Reset form
@@ -175,6 +191,8 @@ export default function CreateCourse() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <Stepper currentStep={2} steps={['Create Course', 'Create Certificate']} />
+
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <ArrowLeft size={24} color="#111827" />
