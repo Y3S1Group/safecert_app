@@ -1,20 +1,20 @@
-import { View, Alert, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Animated } from 'react-native'
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { 
-  Bell, 
-  BookOpen, 
-  Award, 
-  AlertTriangle, 
-  Clock, 
+import {
+  Bell,
+  BookOpen,
+  Award,
+  AlertTriangle,
+  Clock,
   CheckCircle,
   Users,
   Shield,
   Sparkles,
   ArrowRight,
   TrendingUp,
-  Hourglass
+  Hourglass,
 } from 'lucide-react-native'
 import { auth, db } from '@/config/firebaseConfig'
 import { onAuthStateChanged } from 'firebase/auth'
@@ -43,17 +43,6 @@ const SAFETY_TIPS = [
   "Use proper lifting techniques: bend your knees, keep your back straight.",
   "Attend all safety training sessions. Knowledge saves lives.",
   "If you're unsure about a task, ask for help. It's better to be safe than sorry.",
-  "Check fire extinguisher locations and ensure they are accessible.",
-  "Secure all loose objects before working at heights to prevent falling hazards.",
-  "Follow traffic rules when operating forklifts or other industrial vehicles.",
-  "Never work under fatigue. Rest is crucial for safe operations.",
-  "Use hearing protection in high-noise environments to prevent hearing loss.",
-  "Verify that all safety equipment is certified and within expiration dates.",
-  "Follow proper hand hygiene after handling hazardous materials.",
-  "Stay alert and avoid distractions while operating machinery.",
-  "Participate in emergency drills and know your evacuation routes.",
-  "Report any unsafe working conditions to management immediately.",
-  "Ensure proper grounding of electrical equipment to prevent shocks."
 ];
 
 const getTipOfTheDay = () => {
@@ -102,6 +91,8 @@ export default function Home() {
   const [tipOfTheDay, setTipOfTheDay] = useState('');
   const [lastFetchDate, setLastFetchDate] = useState<string>('');
   const [lastEnrollmentState, setLastEnrollmentState] = useState<string>('');
+  const fadeAnim = useState(new Animated.Value(1))[0];
+  const [currentTipIndex, setCurrentTipIndex] = useState(0);
 
   const handleQuickEnrollment = async (courseId: string, courseTitle: string) => {
     const user = auth.currentUser;
@@ -112,7 +103,7 @@ export default function Home() {
         iconColor: '#EF4444',
         iconBgColor: '#FEE2E2',
         buttons: [
-          { text: 'OK', onPress: () => {}, style: 'default' }
+          { text: 'OK', onPress: () => { }, style: 'default' }
         ]
       });
       return;
@@ -120,7 +111,7 @@ export default function Home() {
 
     try {
       const userDocRef = doc(db, 'users', user.email);
-      
+
       await updateDoc(userDocRef, {
         courses: arrayUnion(courseId)
       });
@@ -134,7 +125,6 @@ export default function Home() {
         autoCloseDelay: 2000
       });
 
-      // Navigate to course after 2 seconds
       setTimeout(() => {
         router.push(`/course/${courseId}` as any);
       }, 2000);
@@ -147,7 +137,7 @@ export default function Home() {
         iconColor: '#EF4444',
         iconBgColor: '#FEE2E2',
         buttons: [
-          { text: 'OK', onPress: () => {}, style: 'default' }
+          { text: 'OK', onPress: () => { }, style: 'default' }
         ]
       });
     }
@@ -183,7 +173,6 @@ export default function Home() {
     return () => unsubscribe();
   }, []);
 
-  // Fetch courses
   useEffect(() => {
     const unsubscribe = onSnapshot(
       collection(db, 'courses'),
@@ -198,7 +187,6 @@ export default function Home() {
     return () => unsubscribe();
   }, []);
 
-  // Fetch AI recommendations with caching
   useEffect(() => {
     const fetchRecommendations = async () => {
       if (enrolledCourseIds.length === 0 || courses.length === 0) {
@@ -206,27 +194,21 @@ export default function Home() {
         return;
       }
 
-      // Check if we already fetched today
       const today = new Date().toDateString();
       const enrollmentKey = enrolledCourseIds.sort().join(',');
-      
-      // Use cache if: same day AND same enrollments AND have recommendations
+
       if (
-        lastFetchDate === today && 
-        lastEnrollmentState === enrollmentKey && 
+        lastFetchDate === today &&
+        lastEnrollmentState === enrollmentKey &&
         recommendations.length > 0
       ) {
-        console.log('Using cached AI recommendations');
-        return; // Skip API call
-      }
-
-      // Check if only enrollment changed (not the date)
-      if (lastEnrollmentState === enrollmentKey && recommendations.length > 0) {
-        console.log('Enrollments unchanged, using cached recommendations');
         return;
       }
 
-      console.log('Fetching fresh AI recommendations from Gemini...');
+      if (lastEnrollmentState === enrollmentKey && recommendations.length > 0) {
+        return;
+      }
+
       setLoadingRecommendations(true);
 
       try {
@@ -238,7 +220,6 @@ export default function Home() {
           setRecommendations(recs);
           setLastFetchDate(today);
           setLastEnrollmentState(enrollmentKey);
-          console.log('AI recommendations cached successfully');
         }
       } catch (error) {
         console.error('Error fetching recommendations:', error);
@@ -249,6 +230,26 @@ export default function Home() {
 
     fetchRecommendations();
   }, [enrolledCourseIds, courses]);
+
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     Animated.timing(fadeAnim, {
+  //       toValue: 0,
+  //       duration: 300,
+  //       useNativeDriver: true,
+  //     }).start(() => {
+  //       setCurrentTipIndex((prevIndex) => (prevIndex + 1) % SAFETY_TIPS.length)
+
+  //       Animated.timing(fadeAnim, {
+  //         toValue: 1,
+  //         duration: 300,
+  //         useNativeDriver: true,
+  //       }).start()
+  //     })
+  //   }, )
+
+  //   return () => clearInterval(interval)
+  // }, [])
 
   const fetchUserData = async (email: string) => {
     try {
@@ -268,11 +269,9 @@ export default function Home() {
 
   const fetchRealStats = async (email: string, uid: string) => {
     try {
-      // Fetch user's enrolled courses
       const userDoc = await getDoc(doc(db, 'users', email));
       const enrolledIds = userDoc.exists() ? (userDoc.data().courses || []) : [];
 
-      // Fetch completed trainings
       const progressSnapshot = await getDocs(
         collection(db, 'users', email, 'courseProgress')
       );
@@ -283,8 +282,7 @@ export default function Home() {
       progressSnapshot.forEach((progressDoc) => {
         const data = progressDoc.data();
         const courseId = progressDoc.id;
-        
-        // Find the course to get subtopics count
+
         const course = courses.find(c => c.id === courseId);
         const totalSubtopics = course?.subtopicsCount || 0;
         const completedSubtopics = (data.completedSubtopics || []).length;
@@ -296,13 +294,11 @@ export default function Home() {
         }
       });
 
-      // Add courses with no progress started
       const coursesWithNoProgress = enrolledIds.filter((id: string) => {
         return !progressSnapshot.docs.find(doc => doc.id === id);
       });
       pendingCount += coursesWithNoProgress.length;
 
-      // Fetch reports count
       const reportsQuery = query(
         collection(db, 'incidents'),
         where('reportedByUid', '==', uid)
@@ -367,34 +363,56 @@ export default function Home() {
   ];
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {/* Header Section */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.greeting}>
-              {getGreeting()}, {userInfo?.name?.split(' ')[0] || 'User'}!
-            </Text>
-          </View>
-          <TouchableOpacity 
-            style={styles.notificationButton}
-            onPress={() => router.push('/notifications')}
-          >
-            <Bell size={24} color="#6B7280" />
-            {unreadNotifications > 0 && (
-              <View style={styles.notificationBadge}>
-                <Text style={styles.notificationBadgeText}>
-                  {unreadNotifications > 9 ? '9+' : unreadNotifications}
+    <View style={styles.container}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header Background (Scrollable) */}
+        <View style={styles.headerBackground}>
+          <View style={styles.headerContent}>
+            <View style={styles.headerTop}>
+              <Text style={styles.greeting}>
+                Hi {userInfo?.name || 'User'},{'\n'}
+                <Text style={styles.greetingTime}>{getGreeting()}!</Text>
+              </Text>
+              <TouchableOpacity
+                style={styles.notificationButton}
+                onPress={() => router.push('/notifications')}
+              >
+                <Bell size={24} color="#F97316" />
+                {unreadNotifications > 0 && (
+                  <View style={styles.notificationBadge}>
+                    <Text style={styles.notificationBadgeText}>
+                      {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* Safety Tip Banner */}
+            <View style={styles.headerTipBanner}>
+              <View style={styles.headerTipIcon}>
+                <Shield size={18} color="#F97316" />
+              </View>
+              <View style={[styles.headerTipContent, { opacity: fadeAnim }]}>
+                <Text style={styles.headerTipTitle}>Safety Tip</Text>
+                <Text style={styles.headerTipText}>
+                  {tipOfTheDay}
                 </Text>
               </View>
-            )}
-          </TouchableOpacity>
+            </View>
+          </View>
         </View>
 
-        {/* Dashboard Stats */}
-        <View style={styles.statsContainer}>
+        {/* Curved White Content */}
+        <View style={styles.curvedContent}>
+          {/* Dashboard Stats */}
+          <View style={styles.statsContainer}>
           <View style={styles.recommendationsHeader}>
-            <TrendingUp style={{marginBottom: 10}} size={24} color="#FF6B35" />
+            <TrendingUp style={{marginBottom: 10}} size={20} color="#FF6B35" />
             <Text style={styles.sectionTitle}>Your Progress</Text>
           </View>
           <View style={styles.statsCard}>
@@ -440,10 +458,11 @@ export default function Home() {
           </View>
         </View>
 
-        {/* Quick Actions */}
-        <View style={styles.quickActionsContainer}>
+
+          {/* Quick Actions */}
+          <View style={styles.quickActionsContainer}>
           <View style={styles.recommendationsHeader}>
-            <Hourglass style={{marginBottom: 14}} size={24} color="#FF6B35" />
+            <Hourglass style={{marginBottom: 14}} size={20} color="#FF6B35" />
             <Text style={styles.sectionTitle}>Quick Actions</Text>
           </View>
           <View style={styles.actionsGrid}>
@@ -467,113 +486,104 @@ export default function Home() {
           </View>
         </View>
 
-        {/* AI Course Recommendations */}
-        {enrolledCourseIds.length > 0 && (
-          <View style={styles.recommendationsContainer}>
-            <View style={styles.recommendationsHeader}>
-              <Sparkles style={{marginBottom: 10}} size={24} color="#FF6B35" />
-              <Text style={styles.sectionTitle}>AI Recommended Courses</Text>
-            </View>
-            
-            {loadingRecommendations ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#FF6B35" />
-                <Text style={styles.loadingText}>Finding perfect courses...</Text>
+
+          {/* AI Recommendations */}
+          {enrolledCourseIds.length > 0 && (
+            <View style={styles.recommendationsContainer}>
+              <View style={styles.recommendationsHeader}>
+                <Sparkles style={{ marginBottom: 10 }} size={24} color="#FF6B35" />
+                <Text style={styles.sectionTitle}>AI Recommended Courses</Text>
               </View>
-            ) : recommendations.length > 0 ? (
-              <View style={styles.recommendationsList}>
-                {recommendations.map((rec, index) => {
-                  const course = courses.find(c => c.id === rec.courseId);
-                  if (!course) return null;
 
-                  return (
-                    <TouchableOpacity
-                      key={index}
-                      style={styles.recommendationCard}
-                      onPress={async () => {
-                        // Check enrollment status from Firebase directly
-                        const user = auth.currentUser;
-                        if (!user || !user.email) return;
+              {loadingRecommendations ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color="#FF6B35" />
+                  <Text style={styles.loadingText}>Finding perfect courses...</Text>
+                </View>
+              ) : recommendations.length > 0 ? (
+                <View style={styles.recommendationsList}>
+                  {recommendations.map((rec, index) => {
+                    const course = courses.find(c => c.id === rec.courseId);
+                    if (!course) return null;
 
-                        try {
-                          const userDoc = await getDoc(doc(db, 'users', user.email));
-                          const enrolledIds = userDoc.exists() ? (userDoc.data().courses || []) : [];
-                          const isEnrolled = enrolledIds.includes(rec.courseId);
-                          
-                          if (isEnrolled) {
-                            // User is already enrolled, go directly to course
-                            router.push(`/course/${rec.courseId}` as any);
-                          } else {
-                            // User not enrolled, show enrollment modal
-                            showAlert({
-                              message: `Would you like to enroll in "${course.title}"?`,
-                              icon: BookOpen,
-                              iconColor: '#FF6B35',
-                              iconBgColor: '#FFF5F2',
-                              buttons: [
-                                {
-                                  text: 'Cancel',
-                                  onPress: () => {},
-                                  style: 'cancel'
-                                },
-                                {
-                                  text: 'Enroll Now',
-                                  onPress: () => handleQuickEnrollment(rec.courseId, course.title),
-                                  style: 'default'
-                                }
-                              ]
-                            });
+                    return (
+                      <TouchableOpacity
+                        key={index}
+                        style={styles.recommendationCard}
+                        onPress={async () => {
+                          // Check enrollment status from Firebase directly
+                          const user = auth.currentUser;
+                          if (!user || !user.email) return;
+
+                          try {
+                            const userDoc = await getDoc(doc(db, 'users', user.email));
+                            const enrolledIds = userDoc.exists() ? (userDoc.data().courses || []) : [];
+                            const isEnrolled = enrolledIds.includes(rec.courseId);
+
+                            if (isEnrolled) {
+                              // User is already enrolled, go directly to course
+                              router.push(`/course/${rec.courseId}` as any);
+                            } else {
+                              // User not enrolled, show enrollment modal
+                              showAlert({
+                                message: `Would you like to enroll in "${course.title}"?`,
+                                icon: BookOpen,
+                                iconColor: '#FF6B35',
+                                iconBgColor: '#FFF5F2',
+                                buttons: [
+                                  {
+                                    text: 'Cancel',
+                                    onPress: () => { },
+                                    style: 'cancel'
+                                  },
+                                  {
+                                    text: 'Enroll Now',
+                                    onPress: () => handleQuickEnrollment(rec.courseId, course.title),
+                                    style: 'default'
+                                  }
+                                ]
+                              });
+                            }
+                          } catch (error) {
+                            console.error('Error checking enrollment:', error);
                           }
-                        } catch (error) {
-                          console.error('Error checking enrollment:', error);
-                        }
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.recommendationHeader}>
-                        <View style={styles.recommendationBadge}>
-                          <Sparkles size={12} color="#F59E0B" />
-                          <Text style={styles.recommendationScore}>
-                            {Math.round(rec.relevanceScore * 100)}% match
-                          </Text>
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.recommendationCardHeader}>
+                          <View style={styles.recommendationBadge}>
+                            <Sparkles size={12} color="#F59E0B" />
+                            <Text style={styles.recommendationScore}>
+                              {Math.round(rec.relevanceScore * 100)}% match
+                            </Text>
+                          </View>
+                          <ArrowRight size={20} color="#9CA3AF"/>
                         </View>
-                        <ArrowRight size={20} color="#9CA3AF" />
-                      </View>
-                      
-                      <Text style={styles.recommendationTitle} numberOfLines={2}>
-                        {course.title}
-                      </Text>
-                      
-                      <Text style={styles.recommendationReason} numberOfLines={2}>
-                        {rec.reason}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            ) : (
-              <View style={styles.emptyRecommendations}>
-                <BookOpen size={32} color="#D1D5DB" />
-                <Text style={styles.emptyRecommendationsText}>
-                  Complete more courses to get personalized recommendations
-                </Text>
-              </View>
-            )}
-          </View>
-        )}
 
-        {/* Safety Tip of the Day */}
-        <View style={styles.tipContainer}>
-          <View style={styles.tipHeader}>
-            <Shield size={20} color="#16A085" />
-            <Text style={styles.tipTitle}>Safety Tip of the Day</Text>
-          </View>
-          <Text style={styles.tipContent}>
-            {tipOfTheDay}
-          </Text>
+                        <Text style={styles.recommendationTitle} numberOfLines={2}>
+                          {course.title}
+                        </Text>
+
+                        <Text style={styles.recommendationReason} numberOfLines={2}>
+                          {rec.reason}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              ) : (
+                <View style={styles.emptyRecommendations}>
+                  <BookOpen size={32} color="#D1D5DB" />
+                  <Text style={styles.emptyRecommendationsText}>
+                    Complete more courses to get personalized recommendations
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -586,40 +596,50 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 100,
+    flexGrow: 1,
+    paddingBottom: 40,
   },
-  header: {
+  
+  // Scrollable Header
+  headerBackground: {
+    backgroundColor: '#ff8a37ff',
+    paddingTop: 60,
+    paddingHorizontal: 20,
+    paddingBottom: 50,
+  },
+  headerContent: {
+    zIndex: 1,
+  },
+  headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
-    marginTop: 16,
-  },
-  headerLeft: {
-    flex: 1,
+    alignItems: 'flex-start',
+    marginBottom: 12,
   },
   greeting: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 4,
+    color: '#000000',
+    flex: 1,
+  },
+  greetingTime: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#000000',
   },
   notificationButton: {
-    padding: 8,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#ffffffff',
+    justifyContent: 'center',
+    alignItems: 'center',
     position: 'relative',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
   },
   notificationBadge: {
     position: 'absolute',
-    top: 4,
-    right: 4,
+    top: 6,
+    right: 6,
     minWidth: 18,
     height: 18,
     borderRadius: 9,
@@ -633,12 +653,68 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
   },
+
+  // Safety Tip Banner
+  headerTipBanner: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    maxHeight: 108,
+  },
+  headerTipIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 20,
+    backgroundColor: '#FEF3E2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    marginTop: 12,
+  },
+  headerTipContent: {
+    flex: 1,
+  },
+  headerTipTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#F97316',
+    marginBottom: 6,
+  },
+  headerTipText: {
+    fontSize: 14,
+    color: '#374151',
+    lineHeight: 20,
+    flexWrap: 'wrap',
+  },
+
+  // Curved White Content
+  curvedContent: {
+    backgroundColor: '#F9FAFB',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    paddingTop: 24,
+    paddingHorizontal: 20,
+    paddingBottom: 100,
+    marginTop: -30,
+    minHeight: 800,
+  },
+
+  // Section Title
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#111827',
     marginBottom: 16,
   },
+
+  // Stats Container
   statsCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
@@ -685,6 +761,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#E8E8E8',
     marginVertical: 8,
   },
+
+
+  // Quick Actions - Row Layout
   quickActionsContainer: {
     marginBottom: 32,
   },
@@ -694,35 +773,41 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   actionCard: {
-    width: '48%',
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    padding: 20,
+    width: '48%',
     marginBottom: 12,
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 3,
   },
   actionIcon: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 12,
   },
   actionTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#111827',
     marginBottom: 4,
+    textAlign: 'center',
   },
   actionSubtitle: {
     fontSize: 12,
     color: '#6B7280',
+    textAlign: 'center',
   },
+
+
+  // AI Recommendations
   recommendationsContainer: {
     marginBottom: 32,
   },
@@ -763,7 +848,7 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
     borderLeftColor: '#FF6B35',
   },
-  recommendationHeader: {
+  recommendationCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -811,27 +896,12 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'center',
   },
-  tipContainer: {
-    backgroundColor: '#D1F2EB',
+  headerIcon: {
+    width: 40,
+    height: 40,
     borderRadius: 12,
-    padding: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: '#16A085',
-  },
-  tipHeader: {
-    flexDirection: 'row',
+    backgroundColor: '#FFF5F2',
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
   },
-  tipTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#16A085',
-  },
-  tipContent: {
-    fontSize: 14,
-    color: '#0E6655',
-    lineHeight: 20,
-  },
-});
+})
