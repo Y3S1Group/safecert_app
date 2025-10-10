@@ -11,6 +11,7 @@ import { router } from 'expo-router';
 import { ArrowLeft, FileText, Trash2, X } from 'lucide-react-native';
 import { useSnackbar } from '@/contexts/SnackbarContext';
 import { sendNotification } from '@/utils/notifications';
+import Stepper from '@/components/stepper';
 
 export default function CreateCourse() {
   const { showSnackbar } = useSnackbar();
@@ -257,6 +258,8 @@ export default function CreateCourse() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <Stepper currentStep={2} steps={['Create Course', 'Create Certificate']} />
+
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <ArrowLeft size={24} color="#111827" />
