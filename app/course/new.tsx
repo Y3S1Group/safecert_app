@@ -1,16 +1,19 @@
 // app/course/new.tsx - Updated with Cloudinary
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
 import { db, auth } from '../../config/firebaseConfig';
-import { collection, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, updateDoc, doc, getDocs } from 'firebase/firestore';
 import { uploadPDFToCloudinary, validateCloudinaryConfig } from '../../config/cloudinaryConfig';
 import { SubtopicForm } from "../../types/course";
 import { router } from 'expo-router';
-import { ArrowLeft, FileText, Trash2 } from 'lucide-react-native';
+import { ArrowLeft, FileText, Trash2, X } from 'lucide-react-native';
+import { useSnackbar } from '@/contexts/SnackbarContext';
+import { sendNotification } from '@/utils/notifications';
 
 export default function CreateCourse() {
+  const { showSnackbar } = useSnackbar();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [subtopics, setSubtopics] = useState<SubtopicForm[]>([
@@ -34,11 +37,19 @@ export default function CreateCourse() {
           return updated;
         });
         const langName = lang === 'english' ? 'English' : lang === 'sinhala' ? 'Sinhala' : 'Tamil';
-        Alert.alert('Success', `${langName} PDF selected: ${file.name}`);
+        showSnackbar({
+          message: `${langName} PDF selected: ${file.name}`,
+          type: 'success',
+          duration: 2000
+        });
       }
     } catch (error) {
       console.error('Error picking PDF:', error);
-      Alert.alert('Error', 'Failed to select PDF');
+      showSnackbar({
+        message: 'Failed to select PDF',
+        type: 'error',
+        duration: 3000
+      });
     }
   };
 
@@ -52,28 +63,63 @@ export default function CreateCourse() {
 
   const removeSubtopic = (index: number) => {
     if (subtopics.length === 1) {
-      Alert.alert('Error', 'You must have at least one subtopic');
+      showSnackbar({
+        message: 'You must have at least one subtopic',
+        type: 'warning',
+        duration: 3000
+      });
       return;
     }
     setSubtopics(subtopics.filter((_, i) => i !== index));
+    showSnackbar({
+      message: 'Subtopic removed',
+      type: 'error',
+      duration: 2000
+    });
+  };
+
+  const removePDF = (index: number, lang: 'english' | 'sinhala' | 'tamil') => {
+    setSubtopics(prev => {
+      const updated = [...prev];
+      updated[index].pdfs[lang] = null;
+      return updated;
+    });
+    const langName = lang === 'english' ? 'English' : lang === 'sinhala' ? 'Sinhala' : 'Tamil';
+    showSnackbar({
+      message: `${langName} PDF removed`,
+      type: 'error',
+      duration: 2000
+    });
   };
 
   const handleSubmit = async () => {
     // Validation
     if (!title.trim() || !description.trim()) {
-      Alert.alert('Error', 'Please fill in course title and description.');
+      showSnackbar({
+        message: 'Please fill in course title and description',
+        type: 'warning',
+        duration: 3000
+      });
       return;
     }
 
     const hasValidSubtopic = subtopics.some(sub => sub.title.trim());
     if (!hasValidSubtopic) {
-      Alert.alert('Error', 'Please add at least one subtopic with a title.');
+      showSnackbar({
+        message: 'Please add at least one subtopic with a title',
+        type: 'warning',
+        duration: 3000
+      });
       return;
     }
 
     // Validate Cloudinary configuration
     if (!validateCloudinaryConfig()) {
-      Alert.alert('Error', 'Cloudinary is not properly configured. Please check your environment variables.');
+      showSnackbar({
+        message: 'Cloudinary is not properly configured. Please check your settings.',
+        type: 'error',
+        duration: 4000
+      });
       return;
     }
 
@@ -131,7 +177,11 @@ export default function CreateCourse() {
               console.log(`${lang} PDF uploaded successfully:`, downloadURL);
             } catch (uploadError) {
               console.error(`Error uploading ${lang} PDF:`, uploadError);
-              Alert.alert('Warning', `Failed to upload ${lang} PDF for "${subtopic.title}"`);
+              showSnackbar({
+                message: `Failed to upload ${lang} PDF for "${subtopic.title}"`,
+                type: 'warning',
+                duration: 3000
+              });
             }
           }
         }
@@ -144,19 +194,47 @@ export default function CreateCourse() {
       }
 
       // Update course document with subtopics
-      setUploadProgress('Saving course data...');
-      await updateDoc(doc(db, 'courses', courseRef.id), {
-        subtopics: uploadedSubtopics,
-      });
+      // Send notifications to all users
+      setUploadProgress('Notifying users...');
+      try {
+        const usersSnapshot = await getDocs(collection(db, 'users'));
+        const notificationPromises: Promise<void>[] = [];
+        usersSnapshot.forEach((userDoc) => {
+          // Send to everyone (including creator for now, or exclude with condition)
+          const userId = userDoc.data().uid || userDoc.id;
+          
+          // Optional: Don't notify the creator
+          // if (userId === auth.currentUser?.uid) return;
+          
+          notificationPromises.push(
+            sendNotification(
+              userId,
+              'New Course Available',
+              `"${title.trim()}" has been published. Enroll now to start learning!`,
+              'info'
+            )
+          );
+        });
+        await Promise.all(notificationPromises);
+        console.log(`Sent notifications to ${notificationPromises.length} users`);
+      } catch (notifError) {
+        console.error('Error sending notifications:', notifError);
+        // Don't fail course creation if notifications fail
+      }
 
       console.log('Course updated with subtopics and PDFs');
       console.log('Uploaded subtopics:', uploadedSubtopics);
 
-      Alert.alert(
-        'Success', 
-        'Course created successfully!',
-        [{ text: 'OK', onPress: () => router.back() }]
-      );
+      showSnackbar({
+        message: 'Course created successfully!',
+        type: 'success',
+        duration: 3000
+      });
+
+      // Navigate back after a short delay
+      setTimeout(() => {
+        router.back();
+      }, 1000);
 
       // Reset form
       setTitle('');
@@ -166,7 +244,11 @@ export default function CreateCourse() {
     } catch (error) {
       console.error('Error creating course:', error);
       const errorMessage = error instanceof Error ? error.message : 'Please try again.';
-      Alert.alert('Error', `Failed to create course: ${errorMessage}`);
+      showSnackbar({
+        message: `Failed to create course: ${errorMessage}`,
+        type: 'error',
+        duration: 4000
+      });
     } finally {
       setLoading(false);
       setUploadProgress('');
@@ -268,29 +350,41 @@ export default function CreateCourse() {
             <Text style={styles.uploadLabel}>Upload PDF Materials</Text>
             <View style={styles.uploadContainer}>
               {(['english', 'sinhala', 'tamil'] as const).map((lang) => (
-                <TouchableOpacity
-                  key={lang}
-                  style={[
-                    styles.uploadButton,
-                    sub.pdfs[lang] && styles.uploadButtonSelected
-                  ]}
-                  onPress={() => pickPDF(index, lang)}
-                  disabled={loading}
-                >
-                  <FileText 
-                    size={16} 
-                    color={sub.pdfs[lang] ? '#10B981' : '#FFFFFF'} 
-                  />
-                  <Text style={[
-                    styles.uploadText,
-                    sub.pdfs[lang] && styles.uploadTextSelected
-                  ]}>
-                    {lang === 'english' ? 'EN' : lang === 'sinhala' ? 'SI' : 'TA'}
-                  </Text>
+                <View key={lang} style={styles.uploadWrapper}>
+                  <TouchableOpacity
+                    style={[
+                      styles.uploadButton,
+                      sub.pdfs[lang] && styles.uploadButtonSelected
+                    ]}
+                    onPress={() => pickPDF(index, lang)}
+                    disabled={loading}
+                  >
+                    <FileText 
+                      size={16} 
+                      color={sub.pdfs[lang] ? '#10B981' : '#FFFFFF'} 
+                    />
+                    <Text style={[
+                      styles.uploadText,
+                      sub.pdfs[lang] && styles.uploadTextSelected
+                    ]}>
+                      {lang === 'english' ? 'English' : lang === 'sinhala' ? 'Sinhala' : 'Tamil'}
+                    </Text>
+                    {sub.pdfs[lang] && (
+                      <Text style={styles.checkMark}>✓</Text>
+                    )}
+                  </TouchableOpacity>
+                  
+                  {/* Remove PDF button */}
                   {sub.pdfs[lang] && (
-                    <Text style={styles.checkMark}>✓</Text>
+                    <TouchableOpacity
+                      style={styles.removePdfButton}
+                      onPress={() => removePDF(index, lang)}
+                      disabled={loading}
+                    >
+                      <X size={14} color="#EF4444" />
+                    </TouchableOpacity>
                   )}
-                </TouchableOpacity>
+                </View>
               ))}
             </View>
           </View>
@@ -499,5 +593,27 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
+  },
+  uploadWrapper: {
+    position: 'relative',
+    width: 80,
+  },
+  removePdfButton: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#EF4444',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
 });
