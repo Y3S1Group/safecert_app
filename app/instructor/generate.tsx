@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Check } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '@/config/firebaseConfig';
+import { ArrowLeft, Check, Download } from 'lucide-react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '@/config/firebaseConfig';
 import { PDFDocument, PageSizes, rgb, StandardFonts } from 'pdf-lib';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -25,43 +25,139 @@ interface Template {
   secondaryColor: string;
 }
 
+interface Course {
+  id: string;
+  title: string;
+  description: string;
+  instructor: string;
+  completionDate?: string;
+}
+
 export default function GenerateCertificate() {
   const APP_NAME = 'SafeCert';
   const APP_TAGLINE = 'Digital Safety Certification';
   const router = useRouter();
+  const { courseId, certificateTemplateId } = useLocalSearchParams();
 
   const [receiverName, setReceiverName] = useState('');
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [course, setCourse] = useState<Course | null>(null);
+  const [template, setTemplate] = useState<Template | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationComplete, setGenerationComplete] = useState(false);
 
-  // Fetch certificate templates
+  // Fetch current user name
   useEffect(() => {
-    const fetchTemplates = async () => {
-      try {
-        const snapshot = await getDocs(collection(db, 'certificateTemplates'));
-        const tempList: Template[] = snapshot.docs.map(doc => ({
-          id: doc.id,
-          courseName: doc.data().courseName || '',
-          courseDescription: doc.data().courseDescription || '',
-          instructorName: doc.data().instructorName || '',
-          instructorTitle: doc.data().instructorTitle || '',
-          organizationName: doc.data().organizationName || '',
-          logoUrl: doc.data().logoUrl || '',
-          completionDate: doc.data().completionDate || new Date().toISOString(),
-          primaryColor: doc.data().primaryColor || '#6B21A8',
-          secondaryColor: doc.data().secondaryColor || '#FDF2F8',
-        }));
-        setTemplates(tempList);
-      } catch (error) {
-        console.error('Error fetching templates:', error);
-        Alert.alert('Error', 'Failed to fetch templates');
-      }
-    };
-    fetchTemplates();
+    console.log('=== USER INFO ===');
+    console.log('Current User:', auth.currentUser);
+    console.log('Display Name:', auth.currentUser?.displayName);
+    console.log('Email:', auth.currentUser?.email);
+    
+    if (auth.currentUser?.displayName) {
+      setReceiverName(auth.currentUser.displayName);
+    } else if (auth.currentUser?.email) {
+      setReceiverName(auth.currentUser.email.split('@')[0]);
+    }
+    console.log('Receiver Name Set To:', receiverName);
   }, []);
 
-  // Convert Uint8Array to base64
+  // Fetch course and template data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        
+        console.log('=== FETCHING DATA ===');
+        console.log('CourseId from params:', courseId);
+        console.log('TemplateId from params:', certificateTemplateId);
+        console.log('CourseId type:', typeof courseId);
+        console.log('TemplateId type:', typeof certificateTemplateId);
+
+        // Fetch course details
+        if (courseId) {
+          console.log('--- Fetching Course ---');
+          console.log('Querying collection: courses');
+          console.log('Document ID:', courseId);
+          
+          const courseDoc = await getDoc(doc(db, 'courses', courseId as string));
+          
+          console.log('Course document exists:', courseDoc.exists());
+          
+          if (courseDoc.exists()) {
+            console.log('Course data found:', courseDoc.data());
+            const courseData = {
+              id: courseDoc.id,
+              title: courseDoc.data().title || '',
+              description: courseDoc.data().description || '',
+              instructor: courseDoc.data().instructor || '',
+              completionDate: courseDoc.data().completionDate || new Date().toISOString(),
+            };
+            console.log('Setting course state:', courseData);
+            setCourse(courseData);
+          } else {
+            console.log('❌ Course document does NOT exist!');
+            console.log('Check if document ID is correct in Firestore');
+          }
+        } else {
+          console.log('⚠️ No courseId provided in params');
+        }
+
+        // Fetch template details
+        if (certificateTemplateId) {
+          console.log('--- Fetching Template ---');
+          console.log('Querying collection: certificateTemplates');
+          console.log('Document ID:', certificateTemplateId);
+          
+          const templateDoc = await getDoc(doc(db, 'certificateTemplates', certificateTemplateId as string));
+          
+          console.log('Template document exists:', templateDoc.exists());
+          
+          if (templateDoc.exists()) {
+            console.log('Template data found:', templateDoc.data());
+            const templateData = {
+              id: templateDoc.id,
+              courseName: templateDoc.data().courseName || '',
+              courseDescription: templateDoc.data().courseDescription || '',
+              instructorName: templateDoc.data().instructorName || '',
+              instructorTitle: templateDoc.data().instructorTitle || '',
+              organizationName: templateDoc.data().organizationName || '',
+              logoUrl: templateDoc.data().logoUrl || '',
+              completionDate: templateDoc.data().completionDate || new Date().toISOString(),
+              primaryColor: templateDoc.data().primaryColor || '#6B21A8',
+              secondaryColor: templateDoc.data().secondaryColor || '#FDF2F8',
+            };
+            console.log('Setting template state:', templateData);
+            setTemplate(templateData);
+          } else {
+            console.log('❌ Template document does NOT exist!');
+            console.log('Check if document ID is correct in Firestore');
+          }
+        } else {
+          console.log('⚠️ No certificateTemplateId provided in params');
+        }
+
+        console.log('=== FETCH COMPLETE ===');
+        
+      } catch (error) {
+        console.error('❌ Error fetching data:', error);
+        console.error('Error details:', JSON.stringify(error, null, 2));
+        Alert.alert('Error', 'Failed to fetch certificate data');
+      } finally {
+        setIsLoading(false);
+        console.log('Loading state set to false');
+      }
+    };
+    fetchData();
+  }, [courseId, certificateTemplateId]);
+
+  // Log state changes
+  useEffect(() => {
+    console.log('=== STATE UPDATE ===');
+    console.log('Course state:', course);
+    console.log('Template state:', template);
+    console.log('Is Loading:', isLoading);
+  }, [course, template, isLoading]);
+
   const uint8ArrayToBase64 = (bytes: Uint8Array): string => {
     let binary = '';
     const len = bytes.byteLength;
@@ -71,759 +167,554 @@ export default function GenerateCertificate() {
     return btoa(binary);
   };
 
-  // Load local asset image
   const loadLocalImage = async (): Promise<Uint8Array> => {
-    try {
-      const asset = Asset.fromModule(safecertLogo);
-      await asset.downloadAsync();
-      
-      if (!asset.localUri) {
-        throw new Error('Failed to load local asset');
-      }
-
-      const response = await fetch(asset.localUri);
-      const arrayBuffer = await response.arrayBuffer();
-      return new Uint8Array(arrayBuffer);
-    } catch (error) {
-      console.error('Error loading local image:', error);
-      throw error;
-    }
-  };
-
-  // Fetch image bytes from URL
-  const fetchImageBytes = async (url: string): Promise<Uint8Array> => {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error('Failed to fetch image');
-    }
+    const asset = Asset.fromModule(safecertLogo);
+    await asset.downloadAsync();
+    const response = await fetch(asset.localUri!);
     const arrayBuffer = await response.arrayBuffer();
     return new Uint8Array(arrayBuffer);
   };
 
-  // Detect image type from URL or content
-  const getImageType = (url: string): 'png' | 'jpg' => {
-    const lowerUrl = url.toLowerCase();
-    if (lowerUrl.includes('.png') || lowerUrl.includes('image/png')) {
-      return 'png';
-    }
-    return 'jpg';
+  const fetchImageBytes = async (url: string): Promise<Uint8Array> => {
+    const response = await fetch(url);
+    const arrayBuffer = await response.arrayBuffer();
+    return new Uint8Array(arrayBuffer);
   };
 
-  // Convert hex color to RGB
-  const hexToRgb = (hex: string): { r: number; g: number; b: number } => {
+  const getImageType = (url: string): 'png' | 'jpg' => url.toLowerCase().includes('.png') ? 'png' : 'jpg';
+  
+  const hexToRgb = (hex: string) => {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result ? {
-      r: parseInt(result[1], 16) / 255,
-      g: parseInt(result[2], 16) / 255,
-      b: parseInt(result[3], 16) / 255,
+    return result ? { 
+      r: parseInt(result[1], 16) / 255, 
+      g: parseInt(result[2], 16) / 255, 
+      b: parseInt(result[3], 16) / 255 
     } : { r: 0.42, g: 0.13, b: 0.66 };
   };
-
-  // Format date
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
+  
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', { 
       year: 'numeric', 
       month: 'long', 
       day: 'numeric' 
     });
   };
 
-  const handleBack = () => {
-    router.replace('/instructor/instructorDash');
+  const wrapText = (text: string, maxWidth: number, font: any, fontSize: number): string[] => {
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let currentLine = '';
+
+    for (const word of words) {
+      const testLine = currentLine ? `${currentLine} ${word}` : word;
+      const testWidth = font.widthOfTextAtSize(testLine, fontSize);
+      
+      if (testWidth > maxWidth && currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = testLine;
+      }
+    }
+    
+    if (currentLine) {
+      lines.push(currentLine);
+    }
+    
+    return lines;
   };
 
-  // Generate PDF certificate
-  const generateCertificate = async () => {
-    if (!receiverName.trim()) {
-      Alert.alert('Error', 'Please enter receiver name');
-      return;
-    }
-    if (!selectedTemplateId) {
-      Alert.alert('Error', 'Please select a template');
-      return;
-    }
+  const handleBack = () => {
+    console.log('Back button pressed');
+    router.back();
+  };
 
-    const template = templates.find(t => t.id === selectedTemplateId);
-    if (!template) {
-      Alert.alert('Error', 'Template not found');
+  const generateCertificate = async () => {
+    console.log('=== GENERATE CERTIFICATE ===');
+    console.log('Receiver Name:', receiverName);
+    console.log('Template:', template);
+    console.log('Course:', course);
+    
+    if (!receiverName.trim() || !template || !course) {
+      console.log('❌ Missing required data');
+      console.log('Has receiverName:', !!receiverName.trim());
+      console.log('Has template:', !!template);
+      console.log('Has course:', !!course);
+      Alert.alert('Error', 'Missing required data to generate certificate');
       return;
     }
 
     setIsGenerating(true);
-
+    console.log('Starting PDF generation...');
+    
     try {
       const pdfDoc = await PDFDocument.create();
       const page = pdfDoc.addPage(PageSizes.A4);
       const { width, height } = page.getSize();
 
-      // Embed fonts
+      console.log('PDF page created:', { width, height });
+
       const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
       const regularFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
       const italicFont = await pdfDoc.embedFont(StandardFonts.HelveticaOblique);
 
-      // Get colors
-      const primaryRgb = hexToRgb(template.primaryColor);
-      const primaryColor = rgb(primaryRgb.r, primaryRgb.g, primaryRgb.b);
-      const secondaryRgb = hexToRgb(template.secondaryColor);
-      const secondaryColor = rgb(secondaryRgb.r, secondaryRgb.g, secondaryRgb.b);
+      const { r: pr, g: pg, b: pb } = hexToRgb(template.primaryColor);
+      const primaryColor = rgb(pr, pg, pb);
 
-      // Draw background with secondary color
-      page.drawRectangle({
-        x: 0,
-        y: 0,
-        width: width,
-        height: height,
-        color: secondaryColor,
-      });
+      const { r: sr, g: sg, b: sb } = hexToRgb(template.secondaryColor);
+      const secondaryColor = rgb(sr, sg, sb);
 
-      // Draw decorative border with primary color
-      const borderWidth = 30;
-      // Left border
-      page.drawRectangle({
-        x: 0,
-        y: 0,
-        width: borderWidth,
-        height: height,
-        color: primaryColor,
-      });
-      // Right border
-      page.drawRectangle({
-        x: width - borderWidth,
-        y: 0,
-        width: borderWidth,
-        height: height,
-        color: primaryColor,
-      });
+      console.log('Colors:', { primaryColor: template.primaryColor, secondaryColor: template.secondaryColor });
 
-      // Draw decorative pattern on borders
-      for (let i = 0; i < height; i += 40) {
-        page.drawCircle({
-          x: borderWidth / 2,
-          y: i,
-          size: 8,
-          color: rgb(primaryRgb.r * 0.8, primaryRgb.g * 0.8, primaryRgb.b * 0.8),
-          opacity: 0.6,
-        });
-        page.drawCircle({
-          x: width - borderWidth / 2,
-          y: i,
-          size: 8,
-          color: rgb(primaryRgb.r * 0.8, primaryRgb.g * 0.8, primaryRgb.b * 0.8),
-          opacity: 0.6,
-        });
-      }
+      // Background
+      page.drawRectangle({ x: 0, y: 0, width, height, color: secondaryColor });
 
-      // Draw SafeCert App Logo (Top Left)
+      // Left & right border
+      page.drawRectangle({ x: 0, y: 0, width: 30, height, color: primaryColor });
+      page.drawRectangle({ x: width - 30, y: 0, width: 30, height, color: primaryColor });
+
+      // App logo
       try {
-        const safecertLogoBytes = await loadLocalImage();
-        const safecertLogoImage = await pdfDoc.embedPng(safecertLogoBytes);
-        
-        const safecertLogoSize = 60;
-        const safecertLogoDims = safecertLogoImage.scale(safecertLogoSize / safecertLogoImage.width);
-        
-        page.drawImage(safecertLogoImage, {
-          x: 60,
-          y: height - safecertLogoDims.height - 50,
-          width: safecertLogoDims.width,
-          height: safecertLogoDims.height,
+        console.log('Loading logo...');
+        const logoBytes = await loadLocalImage();
+        const logo = await pdfDoc.embedPng(logoBytes);
+        const logoSize = 60;
+        const logoDims = logo.scale(logoSize / logo.width);
+        page.drawImage(logo, { 
+          x: 60, 
+          y: height - logoDims.height - 50, 
+          width: logoDims.width, 
+          height: logoDims.height 
         });
-
-        // Draw app name below logo
-        page.drawText(APP_NAME, {
-          x: 60,
-          y: height - safecertLogoDims.height - 70,
-          size: 12,
-          font: boldFont,
-          color: primaryColor,
-        });
-
-        // Draw app tagline
-        page.drawText(APP_TAGLINE, {
-          x: 60,
-          y: height - safecertLogoDims.height - 85,
-          size: 8,
-          font: regularFont,
-          color: rgb(0.4, 0.4, 0.4),
-        });
-      } catch (err) {
-        console.warn('Failed to load SafeCert logo:', err);
+        console.log('Logo loaded successfully');
+      } catch (error) {
+        console.error('Error loading logo:', error);
       }
 
-      // Draw Organization Logo (Top Right) if exists
-      if (template.logoUrl) {
-        try {
-          const orgLogoBytes = await fetchImageBytes(template.logoUrl);
-          const imageType = getImageType(template.logoUrl);
-          
-          let orgLogoImage;
-          if (imageType === 'png') {
-            orgLogoImage = await pdfDoc.embedPng(orgLogoBytes);
-          } else {
-            orgLogoImage = await pdfDoc.embedJpg(orgLogoBytes);
-          }
-          
-          const orgLogoSize = 70;
-          const orgLogoDims = orgLogoImage.scale(orgLogoSize / orgLogoImage.width);
-          
-          page.drawImage(orgLogoImage, {
-            x: width - orgLogoDims.width - 60,
-            y: height - orgLogoDims.height - 50,
-            width: orgLogoDims.width,
-            height: orgLogoDims.height,
-          });
-
-          // Draw organization name below logo
-          if (template.organizationName) {
-            const orgNameSize = 10;
-            const orgNameWidth = boldFont.widthOfTextAtSize(template.organizationName, orgNameSize);
-            const orgLogoCenter = width - orgLogoDims.width - 60 + (orgLogoDims.width / 2);
-            
-            page.drawText(template.organizationName, {
-              x: orgLogoCenter - (orgNameWidth / 2),
-              y: height - orgLogoDims.height - 70,
-              size: orgNameSize,
-              font: boldFont,
-              color: primaryColor,
-            });
-          }
-        } catch (err) {
-          console.warn('Failed to load organization logo:', err);
-        }
-      }
+      let currentY = height - 150;
 
       // Certificate title
-      const titleText = 'CERTIFICATE';
-      const titleFontSize = 42;
-      const titleWidth = boldFont.widthOfTextAtSize(titleText, titleFontSize);
-      page.drawText(titleText, {
-        x: (width - titleWidth) / 2,
-        y: height - 150,
-        size: titleFontSize,
-        font: boldFont,
-        color: rgb(0, 0, 0),
+      const titleText = 'CERTIFICATE OF COMPLETION';
+      const titleSize = 36;
+      const titleWidth = boldFont.widthOfTextAtSize(titleText, titleSize);
+      page.drawText(titleText, { 
+        x: (width - titleWidth) / 2, 
+        y: currentY, 
+        size: titleSize, 
+        font: boldFont, 
+        color: rgb(0, 0, 0) 
       });
 
-      const subtitleText = 'OF COMPLETION';
-      const subtitleFontSize = 36;
-      const subtitleWidth = boldFont.widthOfTextAtSize(subtitleText, subtitleFontSize);
-      page.drawText(subtitleText, {
-        x: (width - subtitleWidth) / 2,
-        y: height - 190,
-        size: subtitleFontSize,
-        font: boldFont,
-        color: rgb(0, 0, 0),
+      currentY -= 80;
+
+      // "This is to certify that"
+      const certifyText = 'This is to certify that';
+      const certifySize = 16;
+      const certifyWidth = regularFont.widthOfTextAtSize(certifyText, certifySize);
+      page.drawText(certifyText, { 
+        x: (width - certifyWidth) / 2, 
+        y: currentY, 
+        size: certifySize, 
+        font: regularFont, 
+        color: rgb(0, 0, 0) 
       });
+
+      currentY -= 50;
+
+      // Recipient name
+      const nameText = receiverName.toUpperCase();
+      const nameSize = 32;
+      const nameWidth = boldFont.widthOfTextAtSize(nameText, nameSize);
+      const nameX = (width - nameWidth) / 2;
+      page.drawText(nameText, { 
+        x: nameX, 
+        y: currentY, 
+        size: nameSize, 
+        font: boldFont, 
+        color: primaryColor 
+      });
+      page.drawLine({ 
+        start: { x: nameX - 20, y: currentY - 5 }, 
+        end: { x: nameX + nameWidth + 20, y: currentY - 5 }, 
+        thickness: 2, 
+        color: primaryColor 
+      });
+
+      currentY -= 50;
+
+      // "has successfully completed"
+      const completedText = 'has successfully completed';
+      const completedSize = 16;
+      const completedWidth = regularFont.widthOfTextAtSize(completedText, completedSize);
+      page.drawText(completedText, { 
+        x: (width - completedWidth) / 2, 
+        y: currentY, 
+        size: completedSize, 
+        font: regularFont, 
+        color: rgb(0, 0, 0) 
+      });
+
+      currentY -= 40;
 
       // Course name
-      const courseNameY = height - 250;
-      const courseNameWidth = boldFont.widthOfTextAtSize(template.courseName, 18);
-      page.drawText(template.courseName, {
-        x: (width - courseNameWidth) / 2,
-        y: courseNameY,
-        size: 18,
-        font: boldFont,
-        color: rgb(0, 0, 0),
+      const courseNameText = course.title || template.courseName;
+      console.log('Course name on certificate:', courseNameText);
+      const courseNameSize = 24;
+      const courseNameWidth = boldFont.widthOfTextAtSize(courseNameText, courseNameSize);
+      page.drawText(courseNameText, { 
+        x: (width - courseNameWidth) / 2, 
+        y: currentY, 
+        size: courseNameSize, 
+        font: boldFont, 
+        color: rgb(0, 0, 0) 
       });
 
-      // Course description (wrap text if needed)
-      if (template.courseDescription) {
-        const maxWidth = width - 160;
-        const words = template.courseDescription.split(' ');
-        let line = '';
-        let yOffset = courseNameY - 25;
-        const lines: string[] = [];
-        
-        words.forEach((word, index) => {
-          const testLine = line + word + ' ';
-          const testWidth = regularFont.widthOfTextAtSize(testLine, 11);
-          
-          if (testWidth > maxWidth && line !== '') {
-            lines.push(line.trim());
-            line = word + ' ';
-          } else {
-            line = testLine;
-          }
-          
-          if (index === words.length - 1) {
-            lines.push(line.trim());
-          }
-        });
+      currentY -= 40;
 
-        // Center align description lines
-        lines.forEach(descLine => {
-          const lineWidth = italicFont.widthOfTextAtSize(descLine, 11);
-          page.drawText(descLine, {
-            x: (width - lineWidth) / 2,
-            y: yOffset,
-            size: 11,
-            font: italicFont,
-            color: rgb(0.2, 0.2, 0.2),
+      // Course description (wrapped)
+      const descriptionText = course.description || template.courseDescription;
+      if (descriptionText) {
+        console.log('Adding description:', descriptionText);
+        const descriptionSize = 12;
+        const maxDescWidth = width - 160;
+        const descLines = wrapText(descriptionText, maxDescWidth, regularFont, descriptionSize);
+        
+        descLines.forEach(line => {
+          const lineWidth = regularFont.widthOfTextAtSize(line, descriptionSize);
+          page.drawText(line, { 
+            x: (width - lineWidth) / 2, 
+            y: currentY, 
+            size: descriptionSize, 
+            font: regularFont, 
+            color: rgb(0.3, 0.3, 0.3) 
           });
-          yOffset -= 15;
+          currentY -= 18;
         });
       }
 
-      // "Presented to" text
-      const presentedToWidth = italicFont.widthOfTextAtSize('Presented to', 14);
-      page.drawText('Presented to', {
-        x: (width - presentedToWidth) / 2,
-        y: height - 350,
-        size: 14,
-        font: italicFont,
-        color: rgb(0, 0, 0),
+      currentY -= 20;
+
+      // Completion date
+      const completionDateText = formatDate(course.completionDate || template.completionDate);
+      const dateText = `Date of Completion: ${completionDateText}`;
+      console.log('Completion date:', dateText);
+      const dateSize = 14;
+      const dateWidth = regularFont.widthOfTextAtSize(dateText, dateSize);
+      page.drawText(dateText, { 
+        x: (width - dateWidth) / 2, 
+        y: currentY, 
+        size: dateSize, 
+        font: regularFont, 
+        color: rgb(0, 0, 0) 
       });
 
-      // Recipient name (large and prominent with primary color)
-      const recipientNameSize = 32;
-      const recipientNameText = receiverName.trim().toUpperCase();
-      const recipientNameWidth = boldFont.widthOfTextAtSize(recipientNameText, recipientNameSize);
-      const recipientNameX = (width - recipientNameWidth) / 2;
-      
-      page.drawText(recipientNameText, {
-        x: recipientNameX,
-        y: height - 390,
-        size: recipientNameSize,
-        font: boldFont,
-        color: primaryColor,
-      });
-
-      // Draw underline for name
-      page.drawLine({
-        start: { x: recipientNameX - 20, y: height - 395 },
-        end: { x: recipientNameX + recipientNameWidth + 20, y: height - 395 },
-        thickness: 2,
-        color: primaryColor,
-      });
-
-      // Completion text
-      const completionText = `for successfully completing the ${template.courseName} Workshop on ${formatDate(template.completionDate)}.`;
-      const completionWords = completionText.split(' ');
-      let completionLine = '';
-      let completionY = height - 440;
-      const completionMaxWidth = width - 160;
-      const completionLines: string[] = [];
-      
-      completionWords.forEach((word, index) => {
-        const testLine = completionLine + word + ' ';
-        const testWidth = regularFont.widthOfTextAtSize(testLine, 12);
-        
-        if (testWidth > completionMaxWidth && completionLine !== '') {
-          completionLines.push(completionLine.trim());
-          completionLine = word + ' ';
-        } else {
-          completionLine = testLine;
-        }
-        
-        if (index === completionWords.length - 1) {
-          completionLines.push(completionLine.trim());
-        }
-      });
-
-      // Center align completion text
-      completionLines.forEach(compLine => {
-        const lineWidth = regularFont.widthOfTextAtSize(compLine, 12);
-        page.drawText(compLine, {
-          x: (width - lineWidth) / 2,
-          y: completionY,
-          size: 12,
-          font: regularFont,
-          color: rgb(0, 0, 0),
-        });
-        completionY -= 18;
-      });
-
-      // Draw decorative seal/badge
-      const sealCenterX = width / 2;
-      const sealCenterY = 180;
-      const sealRadius = 50;
-
-      // Outer circle (primary color)
-      page.drawCircle({
-        x: sealCenterX,
-        y: sealCenterY,
-        size: sealRadius,
-        color: primaryColor,
-      });
-
-      // Inner circle (gold/yellow)
-      page.drawCircle({
-        x: sealCenterX,
-        y: sealCenterY,
-        size: sealRadius - 10,
-        color: rgb(1, 0.84, 0.0),
-      });
-
-      // Center white circle
-      page.drawCircle({
-        x: sealCenterX,
-        y: sealCenterY,
-        size: sealRadius - 20,
-        color: rgb(1, 1, 1),
-      });
-
-      // Draw checkmark using simple shapes
-      page.drawLine({
-        start: { x: sealCenterX - 15, y: sealCenterY },
-        end: { x: sealCenterX - 5, y: sealCenterY - 12 },
-        thickness: 5,
-        color: rgb(1, 0.84, 0.0),
-      });
-      page.drawLine({
-        start: { x: sealCenterX - 5, y: sealCenterY - 12 },
-        end: { x: sealCenterX + 15, y: sealCenterY + 8 },
-        thickness: 5,
-        color: rgb(1, 0.84, 0.0),
-      });
-
-      // Draw ribbons below seal
-      page.drawRectangle({
-        x: sealCenterX - 35,
-        y: sealCenterY - sealRadius - 30,
-        width: 20,
-        height: 40,
-        color: primaryColor,
-      });
-      page.drawRectangle({
-        x: sealCenterX + 15,
-        y: sealCenterY - sealRadius - 30,
-        width: 20,
-        height: 40,
-        color: primaryColor,
-      });
+      currentY -= 60;
 
       // Instructor signature section
-      const signatureY = 140;
-      const signatureX = width - 250;
+      const instructorName = template.instructorName || course.instructor;
+      const instructorTitle = template.instructorTitle || 'Instructor';
+      
+      console.log('Instructor:', instructorName, '|', instructorTitle);
+      
+      if (instructorName) {
+        const signatureLineY = currentY;
+        const signatureLineLength = 150;
+        const signatureX = (width - signatureLineLength) / 2;
+        
+        // Signature line
+        page.drawLine({ 
+          start: { x: signatureX, y: signatureLineY }, 
+          end: { x: signatureX + signatureLineLength, y: signatureLineY }, 
+          thickness: 1, 
+          color: rgb(0, 0, 0) 
+        });
 
-      // Signature line
-      page.drawLine({
-        start: { x: signatureX, y: signatureY },
-        end: { x: signatureX + 150, y: signatureY },
-        thickness: 1.5,
-        color: rgb(0, 0, 0),
-      });
+        // Instructor name
+        const instNameSize = 14;
+        const instNameWidth = boldFont.widthOfTextAtSize(instructorName, instNameSize);
+        page.drawText(instructorName, { 
+          x: (width - instNameWidth) / 2, 
+          y: signatureLineY - 20, 
+          size: instNameSize, 
+          font: boldFont, 
+          color: rgb(0, 0, 0) 
+        });
 
-      // Instructor name
-      const instructorNameWidth = regularFont.widthOfTextAtSize(template.instructorName, 12);
-      page.drawText(template.instructorName, {
-        x: signatureX + (150 - instructorNameWidth) / 2,
-        y: signatureY - 20,
-        size: 12,
-        font: boldFont,
-        color: rgb(0, 0, 0),
-      });
-
-      // Instructor title
-      if (template.instructorTitle) {
-        const instructorTitleWidth = regularFont.widthOfTextAtSize(template.instructorTitle, 10);
-        page.drawText(template.instructorTitle, {
-          x: signatureX + (150 - instructorTitleWidth) / 2,
-          y: signatureY - 35,
-          size: 10,
-          font: regularFont,
-          color: rgb(0.3, 0.3, 0.3),
+        // Instructor title
+        const instTitleSize = 12;
+        const instTitleWidth = italicFont.widthOfTextAtSize(instructorTitle, instTitleSize);
+        page.drawText(instructorTitle, { 
+          x: (width - instTitleWidth) / 2, 
+          y: signatureLineY - 35, 
+          size: instTitleSize, 
+          font: italicFont, 
+          color: rgb(0.4, 0.4, 0.4) 
         });
       }
 
-      // Footer with app info
-      const footerText = `Certified via ${APP_NAME} - ${APP_TAGLINE}`;
-      const footerWidth = regularFont.widthOfTextAtSize(footerText, 8);
-      page.drawText(footerText, {
-        x: (width - footerWidth) / 2,
-        y: 40,
-        size: 8,
-        font: italicFont,
-        color: rgb(0.5, 0.5, 0.5),
+      // Footer - Organization & App info
+      const footerY = 60;
+      const orgName = template.organizationName || APP_NAME;
+      const footerText = `${orgName} • ${APP_TAGLINE}`;
+      const footerSize = 10;
+      const footerWidth = regularFont.widthOfTextAtSize(footerText, footerSize);
+      page.drawText(footerText, { 
+        x: (width - footerWidth) / 2, 
+        y: footerY, 
+        size: footerSize, 
+        font: regularFont, 
+        color: rgb(0.5, 0.5, 0.5) 
       });
 
-      // Save PDF
+      console.log('Saving PDF...');
+      // Save and share
       const pdfBytes = await pdfDoc.save();
-
-      if (!FileSystem.documentDirectory) {
-        throw new Error('File system not available');
-      }
-      
-      const fileName = `certificate_${receiverName.trim().replace(/\s+/g, '_')}_${Date.now()}.pdf`;
-      const filePath = `${FileSystem.documentDirectory}${fileName}`;
-      const base64 = uint8ArrayToBase64(pdfBytes);
-
-      await FileSystem.writeAsStringAsync(filePath, base64, {
-        encoding: 'base64',
+      const filePath = `${FileSystem.documentDirectory}certificate_${receiverName.replace(/\s+/g, '_')}.pdf`;
+      await FileSystem.writeAsStringAsync(filePath, uint8ArrayToBase64(pdfBytes), { 
+        encoding: 'base64' 
       });
 
-      const isAvailable = await Sharing.isAvailableAsync();
-      if (isAvailable) {
-        await Sharing.shareAsync(filePath, {
-          mimeType: 'application/pdf',
-          dialogTitle: 'Share Certificate',
-          UTI: 'com.adobe.pdf',
+      console.log('✅ PDF saved to:', filePath);
+      setGenerationComplete(true);
+
+      if (await Sharing.isAvailableAsync()) {
+        console.log('Sharing PDF...');
+        await Sharing.shareAsync(filePath, { 
+          mimeType: 'application/pdf', 
+          dialogTitle: 'Share Certificate' 
         });
       } else {
-        Alert.alert('Success', `Certificate saved to: ${filePath}`);
+        Alert.alert('Success', `Certificate saved: ${filePath}`);
       }
-      
-      Alert.alert('Success', 'Certificate generated successfully!');
-    } catch (error) {
-      console.error('Error generating certificate:', error);
-      Alert.alert('Error', `Failed to generate certificate: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } catch (err) {
+      console.error('❌ Error generating certificate:', err);
+      console.error('Error stack:', err);
+      Alert.alert('Error', 'Failed to generate certificate. Please try again.');
     } finally {
       setIsGenerating(false);
+      console.log('Generation complete, isGenerating set to false');
     }
   };
 
+  if (isLoading) {
+    console.log('Rendering: Loading screen');
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#1B365D" />
+          <Text style={styles.loadingText}>Loading certificate data...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!course || !template) {
+    console.log('Rendering: Error screen - No course or template');
+    console.log('Course:', course);
+    console.log('Template:', template);
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Certificate data not found</Text>
+          <Text style={styles.errorSubtext}>
+            {!course && 'Course data missing. '}
+            {!template && 'Template data missing.'}
+          </Text>
+          <Text style={styles.errorDebug}>
+            CourseId: {courseId || 'none'}{'\n'}
+            TemplateId: {certificateTemplateId || 'none'}
+          </Text>
+          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+            <Text style={styles.backButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  console.log('Rendering: Main screen');
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={handleBack}>
             <ArrowLeft size={24} color="#1B365D" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Generate Certificate</Text>
+          <Text style={styles.headerTitle}>Certificate</Text>
         </View>
 
-        {/* Receiver Name */}
-        <Text style={styles.label}>Student Name *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter student's full name"
-          placeholderTextColor="#9CA3AF"
-          value={receiverName}
-          onChangeText={setReceiverName}
-          editable={!isGenerating}
-        />
-
-        {/* Templates List */}
-        <Text style={styles.sectionTitle}>Select Certificate Template</Text>
-        {templates.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.noTemplates}>No templates available</Text>
-            <Text style={styles.emptySubtext}>Create a template first to generate certificates</Text>
-          </View>
-        ) : (
-          templates.map(template => (
-            <TouchableOpacity
-              key={template.id}
-              style={[
-                styles.templateItem,
-                selectedTemplateId === template.id && styles.templateSelected,
-              ]}
-              onPress={() => setSelectedTemplateId(template.id)}
+        {generationComplete ? (
+          <View style={styles.successContainer}>
+            <View style={styles.successIcon}>
+              <Check size={48} color="#10B981" />
+            </View>
+            <Text style={styles.successTitle}>Certificate Generated!</Text>
+            <Text style={styles.successText}>
+              Your certificate has been generated successfully.
+            </Text>
+            <TouchableOpacity 
+              style={styles.regenerateButton} 
+              onPress={generateCertificate}
               disabled={isGenerating}
             >
-              <View style={styles.templateContent}>
-                {template.logoUrl ? (
-                  <Image 
-                    source={{ uri: template.logoUrl }} 
-                    style={styles.logoPreview}
-                    resizeMode="contain"
-                  />
-                ) : (
-                  <View style={styles.logoPlaceholder} />
-                )}
-                <View style={styles.templateInfo}>
-                  <Text style={styles.templateText}>{template.courseName}</Text>
-                  <Text style={styles.templateSubText}>
-                    {template.instructorName} • {template.organizationName}
-                  </Text>
-                  <View style={styles.colorIndicator}>
-                    <View 
-                      style={[
-                        styles.colorDot, 
-                        { backgroundColor: template.primaryColor }
-                      ]} 
-                    />
-                    <View 
-                      style={[
-                        styles.colorDot, 
-                        { backgroundColor: template.secondaryColor }
-                      ]} 
-                    />
-                  </View>
-                </View>
-                {selectedTemplateId === template.id && (
-                  <Check size={24} color="#1B365D" style={styles.checkIcon} />
-                )}
-              </View>
+              <Download size={20} color="#FFFFFF" />
+              <Text style={styles.regenerateButtonText}>Generate Again</Text>
             </TouchableOpacity>
-          ))
+            <TouchableOpacity 
+              style={styles.doneButton} 
+              onPress={handleBack}
+            >
+              <Text style={styles.doneButtonText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.previewContainer}>
+            <Text style={styles.previewTitle}>Ready to Generate</Text>
+            <View style={styles.infoCard}>
+              <Text style={styles.infoLabel}>Recipient:</Text>
+              <Text style={styles.infoValue}>{receiverName}</Text>
+            </View>
+            <View style={styles.infoCard}>
+              <Text style={styles.infoLabel}>Course:</Text>
+              <Text style={styles.infoValue}>{course.title}</Text>
+            </View>
+            <View style={styles.infoCard}>
+              <Text style={styles.infoLabel}>Instructor:</Text>
+              <Text style={styles.infoValue}>{template.instructorName || course.instructor}</Text>
+            </View>
+            <View style={styles.infoCard}>
+              <Text style={styles.infoLabel}>Completion Date:</Text>
+              <Text style={styles.infoValue}>
+                {formatDate(course.completionDate || template.completionDate)}
+              </Text>
+            </View>
+            <TouchableOpacity 
+              style={[styles.generateButton, isGenerating && styles.generateButtonDisabled]} 
+              onPress={generateCertificate}
+              disabled={isGenerating}
+            >
+              {isGenerating ? (
+                <>
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <Text style={styles.generateButtonText}>Generating...</Text>
+                </>
+              ) : (
+                <>
+                  <Download size={20} color="#FFFFFF" />
+                  <Text style={styles.generateButtonText}>Generate Certificate</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
         )}
-
-        {/* Generate Button */}
-        <TouchableOpacity 
-          style={[
-            styles.generateButton, 
-            (isGenerating || !selectedTemplateId || !receiverName.trim()) && styles.generateButtonDisabled
-          ]} 
-          onPress={generateCertificate}
-          disabled={isGenerating || !selectedTemplateId || !receiverName.trim()}
-        >
-          <Check size={20} color="#FFFFFF" />
-          <Text style={styles.generateButtonText}>
-            {isGenerating ? 'Generating Certificate...' : 'Generate Certificate'}
-          </Text>
-        </TouchableOpacity>
-
-        <View style={{ height: 20 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: '#F9FAFB' 
+  container: { flex: 1, backgroundColor: '#F9FAFB' },
+  content: { padding: 16, paddingBottom: 32 },
+  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 24 },
+  headerTitle: { fontSize: 20, fontWeight: 'bold', marginLeft: 12, color: '#111827', flex: 1 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  loadingText: { marginTop: 16, fontSize: 16, color: '#6B7280' },
+  errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  errorText: { fontSize: 18, color: '#DC2626', marginBottom: 8, textAlign: 'center', fontWeight: 'bold' },
+  errorSubtext: { fontSize: 14, color: '#6B7280', marginBottom: 12, textAlign: 'center' },
+  errorDebug: { fontSize: 12, color: '#9CA3AF', marginBottom: 20, textAlign: 'center', fontFamily: 'monospace' },
+  backButton: { 
+    backgroundColor: '#1B365D', 
+    paddingHorizontal: 24, 
+    paddingVertical: 12, 
+    borderRadius: 8 
   },
-  content: { 
-    padding: 16,
-    paddingBottom: 32,
-  },
-  header: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    marginBottom: 24 
-  },
-  headerTitle: { 
-    fontSize: 20, 
-    fontWeight: 'bold', 
-    marginLeft: 12, 
-    color: '#111827',
-    flex: 1,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 24,
-    backgroundColor: '#FFFFFF',
-    fontSize: 16,
-    color: '#111827',
-  },
-  sectionTitle: { 
-    fontSize: 18, 
-    fontWeight: '700', 
-    marginBottom: 16, 
-    color: '#1B365D' 
-  },
-  templateItem: {
-    padding: 14,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
+  backButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
+  previewContainer: { marginTop: 20 },
+  previewTitle: { fontSize: 22, fontWeight: 'bold', color: '#111827', marginBottom: 20 },
+  infoCard: { 
+    backgroundColor: '#FFFFFF', 
+    padding: 16, 
+    borderRadius: 12, 
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
   },
-  templateSelected: { 
-    borderColor: '#1B365D', 
-    borderWidth: 3,
-    backgroundColor: '#EEF2FF',
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  templateContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  templateInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  templateText: { 
-    fontSize: 16, 
-    fontWeight: '600', 
-    color: '#111827',
-    marginBottom: 4,
-  },
-  templateSubText: { 
-    fontSize: 13, 
-    color: '#6B7280',
-    marginBottom: 6,
-  },
-  colorIndicator: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  colorDot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-  },
-  generateButton: {
+  infoLabel: { fontSize: 14, color: '#6B7280', marginBottom: 4 },
+  infoValue: { fontSize: 16, fontWeight: '600', color: '#111827' },
+  generateButton: { 
+    backgroundColor: '#1B365D', 
+    padding: 16, 
+    borderRadius: 12, 
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1B365D',
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    marginTop: 20,
   },
-  generateButtonDisabled: {
-    backgroundColor: '#9CA3AF',
-    shadowOpacity: 0,
-    elevation: 0,
-  },
+  generateButtonDisabled: { opacity: 0.6 },
   generateButtonText: { 
     color: '#FFFFFF', 
-    fontWeight: '700', 
     fontSize: 16, 
-    marginLeft: 8 
-  },
-  logoPreview: { 
-    width: 60, 
-    height: 60, 
-    borderRadius: 8,
-    backgroundColor: '#F9FAFB',
-  },
-  logoPlaceholder: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    backgroundColor: '#E5E7EB',
-  },
-  checkIcon: {
+    fontWeight: 'bold',
     marginLeft: 8,
   },
-  emptyState: {
-    alignItems: 'center',
-    padding: 40,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderColor: '#D1D5DB',
+  successContainer: { 
+    alignItems: 'center', 
+    marginTop: 40,
+    padding: 20,
   },
-  noTemplates: {
-    textAlign: 'center',
-    color: '#374151',
-    fontSize: 16,
-    fontWeight: '600',
+  successIcon: { 
+    width: 80, 
+    height: 80, 
+    borderRadius: 40, 
+    backgroundColor: '#D1FAE5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  successTitle: { 
+    fontSize: 24, 
+    fontWeight: 'bold', 
+    color: '#111827',
     marginBottom: 8,
   },
-  emptySubtext: {
+  successText: { 
+    fontSize: 16, 
+    color: '#6B7280',
     textAlign: 'center',
-    color: '#9CA3AF',
-    fontSize: 14,
+    marginBottom: 30,
+  },
+  regenerateButton: { 
+    backgroundColor: '#1B365D', 
+    paddingHorizontal: 24, 
+    paddingVertical: 14, 
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    width: '100%',
+  },
+  regenerateButtonText: { 
+    color: '#FFFFFF', 
+    fontSize: 16, 
+    fontWeight: 'bold',
+    marginLeft: 8,
+  },
+  doneButton: { 
+    backgroundColor: '#F3F4F6', 
+    paddingHorizontal: 24, 
+    paddingVertical: 14, 
+    borderRadius: 12,
+    width: '100%',
+    alignItems: 'center',
+  },
+  doneButtonText: { 
+    color: '#1B365D', 
+    fontSize: 16, 
+    fontWeight: '600',
   },
 });

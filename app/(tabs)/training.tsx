@@ -1,10 +1,12 @@
 import { auth, db } from '@/config/firebaseConfig'
 import { useRouter } from 'expo-router'
-import { collection, updateDoc, getDocs, arrayUnion, arrayRemove, deleteDoc, doc, onSnapshot, orderBy, query, where } from 'firebase/firestore'
-import { BookOpen, Users, Award, CheckCircle, Clock, Edit, Eye, FileText, Plus, Search, Trash2, TrendingUp, Video } from 'lucide-react-native'
+import { collection, updateDoc, getDoc, getDocs, arrayUnion, arrayRemove, deleteDoc, doc, onSnapshot, orderBy, query, where } from 'firebase/firestore'
+import { BookOpen, Users, Award, CheckCircle, Clock, Edit, Eye, FileText, Plus, Search, Trash2, TrendingUp, Video, Bold, Activity } from 'lucide-react-native'
 import React, { useEffect, useState } from 'react'
 import { ActivityIndicator, Alert, FlatList, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { useSnackbar } from '@/contexts/SnackbarContext'  
+import { sendNotification } from '@/utils/notifications';
 
 interface Course {
   id: string
@@ -27,6 +29,7 @@ export default function Training() {
   const [enrolledCourses, setEnrolledCourses] = useState<Set<string>>(new Set())
   const [myCourses, setMyCourses] = useState<Course[]>([])
   const [courseProgress, setCourseProgress] = useState<Map<string, { completed: number; total: number }>>(new Map())
+  const { showSnackbar } = useSnackbar()
 
   // Analytics state
   const [analyticsData, setAnalyticsData] = useState<{
@@ -262,56 +265,108 @@ export default function Training() {
   };
 
   const handleDeleteCourse = async (courseId: string) => {
-    Alert.alert(
-      'Delete Course',
-      'Are you sure you want to delete this course? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteDoc(doc(db, 'courses', courseId))
-              Alert.alert('Success', 'Course deleted successfully')
-            } catch (error) {
-              console.error('Error deleting course:', error)
-              Alert.alert('Error', 'Failed to delete course')
-            }
+  Alert.alert(
+    'Delete Course',
+    'Are you sure you want to delete this course? This action cannot be undone.',
+    [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteDoc(doc(db, 'courses', courseId))
+            showSnackbar({
+              message: 'Course deleted successfully',
+              type: 'success',
+              duration: 3000
+            })
+          } catch (error) {
+            console.error('Error deleting course:', error)
+            showSnackbar({
+              message: 'Failed to delete course',
+              type: 'error',
+              duration: 3000
+            })
           }
         }
-      ]
-    )
-  }
+      }
+    ]
+  )
+}
 
   // Update handleEnrollment to use email
   const handleEnrollment = async (courseId: string, courseTitle: string) => {
-    const user = auth.currentUser
+    const user = auth.currentUser;
     if (!user || !user.email) {
-      Alert.alert('Error', 'Please log in to enroll.')
-      return
+      showSnackbar({
+        message: 'Please log in to enroll in courses',
+        type: 'error',
+        duration: 3000
+      });
+      return;
     }
+    
     try {
-      const userDocRef = doc(db, 'users', user.email)
+      const userDocRef = doc(db, 'users', user.email);
       
       if (enrolledCourses.has(courseId)) {
         // Unenroll - remove from array
         await updateDoc(userDocRef, {
           courses: arrayRemove(courseId)
-        })
-        Alert.alert('Unenrolled', `You have been unenrolled from "${courseTitle}"`)
+        });
+        showSnackbar({
+          message: `Successfully unenrolled from "${courseTitle}"`,
+          type: 'success',
+          duration: 3000
+        });
       } else {
-        // Enroll - add to array (creates field if doesn't exist)
+        // Enroll - add to array
         await updateDoc(userDocRef, {
           courses: arrayUnion(courseId)
-        })
-        Alert.alert('Enrolled', `You have successfully enrolled in "${courseTitle}"`)
+        });
+        
+        showSnackbar({
+          message: `Successfully enrolled in "${courseTitle}"`,
+          type: 'success',
+          duration: 3000
+        });
+
+        // ENROLLMENT NOTIFICATION TO INSTRUCTOR
+        try {
+          const courseSnap = await getDoc(doc(db, 'courses', courseId));
+          if (courseSnap.exists()) {
+            const courseData = courseSnap.data();
+            const instructorUid = courseData.createdBy;
+
+            // Get instructor's name (current user who enrolled)
+            const userSnap = await getDoc(doc(db, 'users', user.email));
+            const userName = userSnap.exists() ? userSnap.data().name : 'A student';
+
+            // Send notification to course creator
+            if (instructorUid && instructorUid !== user.uid) {
+              await sendNotification(
+                instructorUid,
+                'New Enrollment',
+                `${userName} enrolled in your course "${courseTitle}"`,
+                'info'
+              );
+            }
+          }
+        } catch (notifError) {
+          console.error('Error sending enrollment notification:', notifError);
+          // Don't fail enrollment if notification fails
+        }
       }
     } catch (error) {
-      console.error('Error updating enrollment:', error)
-      Alert.alert('Error', 'Failed to update enrollment')
+      console.error('Error updating enrollment:', error);
+      showSnackbar({
+        message: 'Failed to update enrollment. Please try again.',
+        type: 'error',
+        duration: 3000
+      });
     }
-  }
+  };
 
   const renderCourseCard = ({ item, mode = 'view' }: { item: Course; mode?: 'view' | 'create' }) => {
   const isEnrolled = enrolledCourses.has(item.id)
@@ -328,7 +383,11 @@ export default function Training() {
       style={styles.courseCard}
       onPress={() => {
         if (mode === 'view' && !isEnrolled && !isOwner) {
-          Alert.alert('Enrollment Required', 'Please enroll in this course to view its content.')
+          showSnackbar({
+            message: 'Please enroll in this course to view its content',
+            type: 'warning',
+            duration: 3000
+          })
           return
         }
         router.push(`/course/${item.id}` as any)
@@ -566,9 +625,12 @@ export default function Training() {
         case 'analytics':
           if (analyticsLoading) {
             return (
-              <View style={styles.center}>
-                <ActivityIndicator size="large" color="#FF6B35" />
-                <Text style={styles.loadingText}>Loading analytics...</Text>
+              <View style={styles.loadingContainer}>
+                <View style={styles.loadingIconContainer}>
+                  <Activity size={40} color="#FF6B35" />
+                </View>
+                <Text style={styles.loadingText}>Analyzing data...</Text>
+                <Text style={styles.loadingSubtext}>Please wait</Text>
               </View>
             );
           }
@@ -771,7 +833,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
-    paddingBottom: 80,
   },
   header: {
     backgroundColor: '#FFFFFF',
@@ -872,6 +933,7 @@ const styles = StyleSheet.create({
   listContent: {
     padding: 16,
     flexGrow: 1,
+    paddingBottom: 80,
   },
   courseCard: {
     backgroundColor: '#FFFFFF',
@@ -926,7 +988,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 12,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
     marginBottom: 12,
@@ -1126,8 +1188,7 @@ const styles = StyleSheet.create({
     color: '#10B981',
   },
   progressSection: {
-    marginTop: 16,
-    paddingTop: 16,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
   },
@@ -1168,11 +1229,6 @@ const styles = StyleSheet.create({
   flex: 1,
   justifyContent: 'center',
   alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#6B7280',
   },
   analyticsContent: {
     padding: 16,
@@ -1303,5 +1359,30 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#10B981',
     borderRadius: 3,
+  },
+    loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  loadingIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#FFF5F2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  loadingText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  loadingSubtext: {
+    fontSize: 14,
+    color: '#9CA3AF',
   },
 })

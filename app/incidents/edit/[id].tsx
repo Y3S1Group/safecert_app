@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image } from 'react-native'
 import React, { useState, useEffect } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { ArrowLeft, MapPin, Camera, X, Save, ChevronLeft, FileText, MapPinned, CheckCircle } from 'lucide-react-native'
+import { ArrowLeft, MapPin, Camera, X, Save, ChevronLeft, FileText, MapPinned, CheckCircle, AlertTriangle } from 'lucide-react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { auth, db } from '@/config/firebaseConfig'
@@ -79,12 +79,22 @@ export default function EditIncident() {
           setSelectedImages(existingImages)
         }
       } else {
-        Alert.alert('Error', 'Incident not found')
+        showAlert({
+          message: 'Incident not found',
+          icon: AlertTriangle,
+          iconColor: '#EF4444',
+          iconBgColor: '#fad5d1ff',
+          autoClose: true,
+          autoCloseDelay: 1500
+        })
         router.back()
       }
     } catch (error) {
       console.error('Error fetching incident:', error)
-      Alert.alert('Error', 'Failed to load incident')
+      showSnackbar({
+          message: 'Failed to load incident',
+          type: 'error'
+      })
     } finally {
       setLoading(false)
     }
@@ -94,7 +104,10 @@ export default function EditIncident() {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
       if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Camera roll permission is required')
+        showSnackbar({
+          message: 'Media library permission is required',
+          type: 'warning'
+      })
         return
       }
 
@@ -115,7 +128,10 @@ export default function EditIncident() {
       }
     } catch (error) {
       console.error('Error picking image:', error)
-      Alert.alert('Error', 'Failed to pick image')
+      showSnackbar({
+          message: 'Failed to pick media',
+          type: 'error'
+      })
     }
   }
 
@@ -123,7 +139,10 @@ export default function EditIncident() {
     try {
       const { status} = await ImagePicker.requestCameraPermissionsAsync()
       if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Camera permission is required')
+        showSnackbar({
+          message: 'Camera permission is required',
+          type: 'warning'
+        })
         return
       }
 
@@ -143,7 +162,10 @@ export default function EditIncident() {
       }
     } catch (error) {
       console.error('Error taking photo:', error)
-      Alert.alert('Error', 'Failed to take photo')
+      showSnackbar({
+          message: 'Failed to take photo',
+          type: 'error'
+      })
     }
   }
 
@@ -417,34 +439,72 @@ export default function EditIncident() {
                   try {
                     const { status } = await Location.requestForegroundPermissionsAsync()
                     if (status !== 'granted') {
-                      Alert.alert('Permission denied', 'Location permission is required to use GPS')
+                      showSnackbar({
+                        message: 'Location permission is required to use GPS',
+                        type: 'warning'
+                      })
                       return
                     }
+                    const loc = await Location.getCurrentPositionAsync({
+                      accuracy: Location.Accuracy.Balanced
+                    })
 
-                    const loc = await Location.getCurrentPositionAsync({})
                     const address = await Location.reverseGeocodeAsync({
                       latitude: loc.coords.latitude,
                       longitude: loc.coords.longitude,
                     })
-
-                    const locationData: LocationData = {
-                      latitude: loc.coords.latitude,
-                      longitude: loc.coords.longitude,
-                      address: address[0] ? `${address[0].street}, ${address[0].city}` : undefined
-                    }
-
-                    setCurrentLocation(locationData)
-
                     if (address[0]) {
-                      const city = address[0].city || ''
-                      const district = address[0].district || address[0].subregion || ''
-                      setLocation(`${city}${city && district ? ', ' : ''}${district}`)
+                      const isPlusCode = (str: string | null) => {
+                        if (!str) return false
+                        return /^[A-Z0-9]{4}\+[A-Z0-9]{2,3}$/.test(str)
+                      }
+                      const addressParts = [
+                        address[0].city,
+                        address[0].district,
+                        address[0].subregion,
+                        address[0].region,
+                        address[0].street,
+                        address[0].name
+                      ].filter(part => {
+                        if (!part) return false
+                        if (part === 'null' || part === 'undefined') return false
+                        if (isPlusCode(part)) return false
+                        return true
+                      })
+
+                      const formattedAddress = addressParts.length > 0
+                        ? addressParts.slice(0, 2).join(', ')
+                        : `${loc.coords.latitude.toFixed(6)}, ${loc.coords.longitude.toFixed(6)}`
+                      const locationData: LocationData = {
+                        latitude: loc.coords.latitude,
+                        longitude: loc.coords.longitude,
+                        address: formattedAddress
+                      }
+                      setCurrentLocation(locationData)
+                      setLocation(formattedAddress)
+                      showSnackbar({
+                        message: 'GPS location detected successfully',
+                        type: 'success',
+                        duration: 2000
+                      })
                     } else {
-                      setLocation(`${loc.coords.latitude.toFixed(6)}, ${loc.coords.longitude.toFixed(6)}`)
+                      const coordsString = `${loc.coords.latitude.toFixed(6)}, ${loc.coords.longitude.toFixed(6)}`
+
+                      const locationData: LocationData = {
+                        latitude: loc.coords.latitude,
+                        longitude: loc.coords.longitude,
+                        address: coordsString
+                      }
+
+                      setCurrentLocation(locationData)
+                      setLocation(coordsString)
                     }
                   } catch (error) {
                     console.error('Error getting GPS location:', error)
-                    Alert.alert('Error', 'Failed to get GPS location')
+                    showSnackbar({
+                      message: 'Failed to get GPS location',
+                      type: 'error'
+                    })
                   }
                 }}
               >

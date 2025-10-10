@@ -6,7 +6,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { collection, addDoc, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/config/firebaseConfig';
 import { uploadMultipleImages } from '@/config/cloudinaryConfig';
-import { useRouter , useLocalSearchParams} from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import Stepper from '@/components/stepper';
 
 export default function CreateCertificate() {
@@ -110,7 +110,7 @@ export default function CreateCertificate() {
       });
 
       Alert.alert("Success", "Certificate template saved and linked to course!");
-      router.replace('/instructor/instructorDash');
+      router.replace('/course');
     } catch (error) {
       console.error("Error saving template:", error);
       Alert.alert("Error", "Failed to save template");
@@ -130,15 +130,20 @@ export default function CreateCertificate() {
   return (
     <SafeAreaView style={styles.container}>
       <Stepper currentStep={2} steps={['Create Course', 'Create Certificate']} />
-      <ScrollView contentContainerStyle={styles.content}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleBack}>
-            <ArrowLeft size={24} color="#1B365D" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Create Template</Text>
-        </View>
+      
+      <View style={styles.header}>
+        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+          <ArrowLeft size={24} color="#111827" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Create Certificate Template</Text>
+        <View style={{ width: 24 }} />
+      </View>
 
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Course info */}
         <Text style={styles.sectionTitle}>Course Information</Text>
         <TextInput
@@ -155,6 +160,8 @@ export default function CreateCertificate() {
           value={courseDescription}
           onChangeText={setCourseDescription}
           multiline
+          numberOfLines={4}
+          textAlignVertical="top"
         />
 
         {/* Instructor info */}
@@ -168,14 +175,14 @@ export default function CreateCertificate() {
         />
         <TextInput
           style={styles.input}
-          placeholder="Instructor Title"
+          placeholder="Instructor Title (e.g., Professor, Course Director)"
           placeholderTextColor="#9CA3AF"
           value={instructorTitle}
           onChangeText={setInstructorTitle}
         />
 
         {/* Organization */}
-        <Text style={styles.sectionTitle}>Organization (Optional)</Text>
+        <Text style={styles.sectionTitle}>Organization Details</Text>
         <TextInput
           style={styles.input}
           placeholder="Organization Name"
@@ -185,17 +192,17 @@ export default function CreateCertificate() {
         />
 
         {/* Logo */}
-        <Text style={styles.label}>Logo</Text>
+        <Text style={styles.label}>Organization Logo</Text>
         {logoUrl ? (
           <View style={styles.logoContainer}>
             <Image source={{ uri: logoUrl }} style={styles.logoPreview} />
             <TouchableOpacity style={styles.removeLogoButton} onPress={() => setLogoUrl('')}>
-              <X size={16} color="#fff" />
+              <X size={16} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
         ) : (
           <TouchableOpacity style={styles.uploadButton} onPress={pickLogo}>
-            <Camera size={20} color="#1B365D" />
+            <Camera size={20} color="#FF6B35" />
             <Text style={styles.uploadText}>Upload Logo</Text>
           </TouchableOpacity>
         )}
@@ -222,7 +229,7 @@ export default function CreateCertificate() {
               <Text style={styles.colorName}>{color.name}</Text>
               {primaryColor === color.primary && (
                 <View style={styles.checkMark}>
-                  <Check size={16} color="#fff" />
+                  <Check size={16} color="#FFFFFF" />
                 </View>
               )}
             </TouchableOpacity>
@@ -230,7 +237,7 @@ export default function CreateCertificate() {
         </View>
 
         <TouchableOpacity style={styles.saveButton} onPress={handleSaveTemplate}>
-          <Check size={20} color="#fff" />
+          <Check size={20} color="#FFFFFF" />
           <Text style={styles.saveButtonText}>Save Template</Text>
         </TouchableOpacity>
 
@@ -240,52 +247,176 @@ export default function CreateCertificate() {
   );
 }
 
-// Styles: reuse your previous styles
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
     backgroundColor: "#F9FAFB" 
   },
+  scrollView: {
+    flex: 1,
+  },
   content: { 
-    padding: 16, 
-    paddingBottom: 55 
+    padding: 24,
+    paddingBottom: 100 
   },
   header: { 
-    flexDirection: "row", 
-    alignItems: "center", 
-    marginBottom: 24 
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+    marginBottom: 0,
+  },
+  backButton: {
+    padding: 4,
   },
   headerTitle: { 
-    fontSize: 22, 
-    fontWeight: 'bold', 
-    textAlign: 'center', 
-    color: '#1B365D', 
-    marginVertical: 16, 
-    flex: 1 
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111827',
   },
   sectionTitle: { 
-    fontSize: 18, 
-    fontWeight: "700", 
-    color: "#1B365D", 
-    marginTop: 24, 
-    marginBottom: 12 
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 16,
+    marginTop: 24,
   },
-  label: { fontSize: 14, fontWeight: "600", color: "#374151", marginBottom: 8 },
-  input: { borderWidth: 1, borderColor: "#D1D5DB", borderRadius: 8, padding: 12, marginBottom: 16, backgroundColor: "#fff", fontSize: 14, color: "#111827" },
-  textArea: { height: 80, textAlignVertical: 'top' },
-  uploadButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", borderWidth: 2, borderStyle: "dashed", borderColor: "#1B365D", borderRadius: 8, padding: 16, marginBottom: 16, backgroundColor: "#F0F4FF" },
-  uploadText: { marginLeft: 8, color: "#1B365D", fontWeight: "600", fontSize: 14 },
-  logoContainer: { alignItems: "center", marginBottom: 16, position: "relative" },
-  logoPreview: { width: 120, height: 120, borderRadius: 12, borderWidth: 2, borderColor: "#E5E7EB" },
-  removeLogoButton: { position: "absolute", top: -8, right: "35%", backgroundColor: "#EF4444", borderRadius: 12, padding: 4 },
-  colorGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 16 },
-  colorOption: { width: "30%", aspectRatio: 1, borderRadius: 12, borderWidth: 2, borderColor: "#E5E7EB", padding: 8, alignItems: "center", justifyContent: "center", backgroundColor: "#fff", position: "relative" },
-  selectedColorOption: { borderColor: "#1B365D", borderWidth: 3 },
-  colorPreview: { flexDirection: "row", gap: 4, marginBottom: 4 },
-  colorCirclePrimary: { width: 28, height: 28, borderRadius: 14, borderWidth: 1, borderColor: "#E5E7EB" },
-  colorCircleSecondary: { width: 28, height: 28, borderRadius: 14, borderWidth: 1, borderColor: "#E5E7EB" },
-  colorName: { fontSize: 12, fontWeight: "600", color: "#374151", marginTop: 4 },
-  checkMark: { position: "absolute", top: 4, right: 4, backgroundColor: "#1B365D", borderRadius: 10, padding: 2 },
-  saveButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", backgroundColor: "#1B365D", padding: 16, borderRadius: 12, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 },
-  saveButtonText: { color: "#fff", fontWeight: "700", fontSize: 16, marginLeft: 8 },
+  label: { 
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: 10,
+    marginTop: 4,
+  },
+  input: { 
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 12,
+    color: '#111827',
+    fontSize: 15,
+  },
+  textArea: { 
+    height: 100,
+    textAlignVertical: 'top',
+  },
+  uploadButton: { 
+    flexDirection: "row", 
+    alignItems: "center", 
+    justifyContent: "center", 
+    borderWidth: 2, 
+    borderStyle: "dashed", 
+    borderColor: "#FF6B35", 
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16, 
+    backgroundColor: "#FFF5F2",
+    gap: 8,
+  },
+  uploadText: { 
+    color: "#FF6B35", 
+    fontWeight: "600", 
+    fontSize: 14 
+  },
+  logoContainer: { 
+    alignItems: "center", 
+    marginBottom: 16, 
+    position: "relative" 
+  },
+  logoPreview: { 
+    width: 120, 
+    height: 120, 
+    borderRadius: 12, 
+    borderWidth: 2, 
+    borderColor: "#E5E7EB" 
+  },
+  removeLogoButton: { 
+    position: "absolute", 
+    top: -8, 
+    right: "35%", 
+    backgroundColor: "#EF4444", 
+    borderRadius: 12, 
+    padding: 4 
+  },
+  colorGrid: { 
+    flexDirection: "row", 
+    flexWrap: "wrap", 
+    gap: 12, 
+    marginBottom: 16 
+  },
+  colorOption: { 
+    width: "30%", 
+    aspectRatio: 1, 
+    borderRadius: 12, 
+    borderWidth: 2, 
+    borderColor: "#E5E7EB", 
+    padding: 8, 
+    alignItems: "center", 
+    justifyContent: "center", 
+    backgroundColor: "#FFFFFF", 
+    position: "relative" 
+  },
+  selectedColorOption: { 
+    borderColor: "#FF6B35", 
+    borderWidth: 3 
+  },
+  colorPreview: { 
+    flexDirection: "row", 
+    gap: 4, 
+    marginBottom: 4 
+  },
+  colorCirclePrimary: { 
+    width: 28, 
+    height: 28, 
+    borderRadius: 14, 
+    borderWidth: 1, 
+    borderColor: "#E5E7EB" 
+  },
+  colorCircleSecondary: { 
+    width: 28, 
+    height: 28, 
+    borderRadius: 14, 
+    borderWidth: 1, 
+    borderColor: "#E5E7EB" 
+  },
+  colorName: { 
+    fontSize: 12, 
+    fontWeight: "600", 
+    color: "#374151", 
+    marginTop: 4 
+  },
+  checkMark: { 
+    position: "absolute", 
+    top: 4, 
+    right: 4, 
+    backgroundColor: "#FF6B35", 
+    borderRadius: 10, 
+    padding: 2 
+  },
+  saveButton: { 
+    flexDirection: "row", 
+    alignItems: "center", 
+    justifyContent: "center", 
+    backgroundColor: "#FF6B35", 
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 10,
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+    gap: 8,
+  },
+  saveButtonText: { 
+    color: "#FFFFFF", 
+    fontWeight: "700", 
+    fontSize: 16,
+  },
 });

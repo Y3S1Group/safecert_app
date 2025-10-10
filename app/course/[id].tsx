@@ -2,12 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, Alert, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, getDocs, collection, query, where } from 'firebase/firestore';
 import { db, auth } from '@/config/firebaseConfig';
 import { Course, Subtopic } from '@/types/course';
-import { BookOpen, FileText, ArrowLeft, Play, X, Download, CheckCircle, Volume2, VolumeX } from 'lucide-react-native';
+
+import { BookOpen, FileText, ArrowLeft, Play, X, Download, CheckCircle, Info, Trophy,Volume2, VolumeX } from 'lucide-react-native';
 import { WebView } from 'react-native-webview';
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Linking } from 'react-native';
 import { getViewablePDFUrl } from '@/config/cloudinaryConfig';
@@ -102,6 +103,9 @@ export default function CourseDetail() {
     };
   }, []);
 
+  const [quizScores, setQuizScores] = useState<Map<number, number>>(new Map());
+  const [guidelinesVisible, setGuidelinesVisible] = useState(false);
+
   useEffect(() => {
     const fetchCourse = async () => {
       try {
@@ -156,28 +160,46 @@ export default function CourseDetail() {
     }
   }, [id, subtopics.length]);
 
-  const openPDF = (url: string, subtopicTitle: string, lang: string) => {
-    Alert.alert(
-      'Open PDF',
-      'How would you like to view this PDF?',
-      [
-        {
-          text: 'In-App Viewer',
-          onPress: () => {
-            const viewableUrl = getViewablePDFUrl(url);
-            setSelectedPDF({ url: viewableUrl, title: subtopicTitle, lang });
+  useEffect(() => {
+    const fetchQuizScores = async () => {
+      const user = auth.currentUser;
+      if (!user || !id) return;
+
+      try {
+        const quizQuery = query(
+          collection(db, 'quizAttempts'),
+          where('userId', '==', user.uid),
+          where('courseId', '==', id)
+        );
+
+        const quizSnapshot = await getDocs(quizQuery);
+        const scoresMap = new Map<number, number>();
+
+        quizSnapshot.forEach((doc) => {
+          const data = doc.data();
+          const subtopicIndex = data.subtopicIndex;
+          const score = data.score || 0;
+
+          // Keep highest score for each subtopic
+          if (!scoresMap.has(subtopicIndex) || scoresMap.get(subtopicIndex)! < score) {
+            scoresMap.set(subtopicIndex, score);
           }
-        },
-        {
-          text: 'External Browser',
-          onPress: () => Linking.openURL(url)
-        },
-        {
-          text: 'Cancel',
-          style: 'cancel'
-        }
-      ]
-    );
+        });
+
+        setQuizScores(scoresMap);
+      } catch (error) {
+        console.error('Error fetching quiz scores:', error);
+      }
+    };
+
+    if (subtopics.length > 0) {
+      fetchQuizScores();
+    }
+  }, [id, subtopics.length]);
+
+  const openPDF = (url: string, subtopicTitle: string, lang: string) => {
+    const viewableUrl = getViewablePDFUrl(url);
+    setSelectedPDF({ url: viewableUrl, title: subtopicTitle, lang });
   };
 
   const downloadPDF = async () => {
@@ -264,6 +286,7 @@ export default function CourseDetail() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backIconButton}>
@@ -280,6 +303,12 @@ export default function CourseDetail() {
             <View style={styles.courseBadge}>
               <BookOpen size={16} color="#FF6B35" />
               <Text style={styles.courseBadgeText}>Course</Text>
+              <TouchableOpacity 
+                onPress={() => setGuidelinesVisible(true)} 
+                style={styles.guidelinesButtonSmall}
+              >
+                <Info size={20} color="#FF6B35" />
+              </TouchableOpacity>
             </View>
           </View>
           <Text style={styles.description}>{course.description}</Text>
@@ -333,12 +362,21 @@ export default function CourseDetail() {
         ) : (
           subtopics.map((sub, index) => {
             const isCompleted = userProgress.includes(index);
+
             const isSpeakingSubtopic = speakingItem === `subtopic-${index}`;
+            const quizScore = quizScores.get(index);
+
             
             return (
               <View key={index} style={styles.subtopicCard}>
                 <View style={styles.subtopicHeader}>
                   <Text style={styles.subtopicNumber}>Topic {index + 1}</Text>
+                  {quizScore !== undefined && (
+                    <View style={styles.scoreBadge}>
+                      <Trophy size={12} color="#F59E0B" />
+                      <Text style={styles.scoreText}>{quizScore}/100</Text>
+                    </View>
+                  )}
                   {isCompleted && (
                     <View style={styles.completedBadge}>
                       <CheckCircle size={16} color="#10B981" />
@@ -536,6 +574,95 @@ export default function CourseDetail() {
                 <Text style={styles.generatingText}>Generating quiz...</Text>
               </View>
             )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Course Guidelines Modal */}
+      <Modal
+        visible={guidelinesVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setGuidelinesVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.guidelinesModal}>
+            <View style={styles.guidelinesHeader}>
+              <Text style={styles.guidelinesTitle}>Course Guidelines</Text>
+              <TouchableOpacity 
+                onPress={() => setGuidelinesVisible(false)}
+                style={styles.guidelinesCloseButton}
+              >
+                <X size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.guidelinesContent} showsVerticalScrollIndicator={false}>
+              <Text style={styles.guidelinesSubtitle}>
+                How to Complete This Course
+              </Text>
+
+              <View style={styles.guidelineItem}>
+                <View style={styles.guidelineNumber}>
+                  <Text style={styles.guidelineNumberText}>1</Text>
+                </View>
+                <View style={styles.guidelineText}>
+                  <Text style={styles.guidelineTitle}>Study the Materials</Text>
+                  <Text style={styles.guidelineDesc}>
+                    Read the PDF in each subtopic (Available in English, Sinhala, or Tamil)
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.guidelineItem}>
+                <View style={styles.guidelineNumber}>
+                  <Text style={styles.guidelineNumberText}>2</Text>
+                </View>
+                <View style={styles.guidelineText}>
+                  <Text style={styles.guidelineTitle}>Take the Quiz</Text>
+                  <Text style={styles.guidelineDesc}>
+                    Generate and complete the AI-powered quiz for each subtopic
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.guidelineItem}>
+                <View style={styles.guidelineNumber}>
+                  <Text style={styles.guidelineNumberText}>3</Text>
+                </View>
+                <View style={styles.guidelineText}>
+                  <Text style={styles.guidelineTitle}>Pass with 70%</Text>
+                  <Text style={styles.guidelineDesc}>
+                    Score at least 7 out of 10 questions to complete each subtopic
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.guidelineItem}>
+                <View style={styles.guidelineNumber}>
+                  <Text style={styles.guidelineNumberText}>4</Text>
+                </View>
+                <View style={styles.guidelineText}>
+                  <Text style={styles.guidelineTitle}>Complete All Topics</Text>
+                  <Text style={styles.guidelineDesc}>
+                    Finish all {subtopics.length} subtopics to earn your certificate
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.guidelineTip}>
+                <Text style={styles.guidelineTipText}>
+                  Tip: You can retake quizzes to improve your score. Your highest score will be saved.
+                </Text>
+              </View>
+            </ScrollView>
+
+            <TouchableOpacity 
+              style={styles.guidelinesButton}
+              onPress={() => setGuidelinesVisible(false)}
+            >
+              <Text style={styles.guidelinesButtonText}>Got It!</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -844,7 +971,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12, 
     borderBottomWidth: 1, 
     borderBottomColor: '#E5E7EB',
-    paddingTop: 50,
+    paddingTop: 16,
   },
   closeButton: { 
     padding: 8 
@@ -959,5 +1086,122 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FF6B35',
+  },
+  guidelinesButtonSmall: {
+    padding: 8,
+    borderRadius: 50,
+    backgroundColor: '#FFF5F2',
+    marginStart: 170,
+  },
+  badgeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  scoreBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+    marginStart: 60,
+  },
+  scoreText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#F59E0B',
+  },
+  guidelinesModal: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 24,
+    maxHeight: '80%',
+    width: '100%',
+    position: 'absolute',
+  },
+  guidelinesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    gap: 12,
+  },
+  guidelinesTitle: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  guidelinesCloseButton: {
+    padding: 4,
+  },
+  guidelinesContent: {
+    marginBottom: 20,
+  },
+  guidelinesSubtitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: 20,
+  },
+  guidelineItem: {
+    flexDirection: 'row',
+    marginBottom: 20,
+    gap: 12,
+  },
+  guidelineNumber: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FF6B35',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  guidelineNumberText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  guidelineText: {
+    flex: 1,
+  },
+  guidelineTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  guidelineDesc: {
+    fontSize: 14,
+    color: '#6B7280',
+    lineHeight: 20,
+  },
+  guidelineTip: {
+    flexDirection: 'row',
+    backgroundColor: '#EFF6FF',
+    padding: 16,
+    borderRadius: 12,
+    gap: 12,
+    marginTop: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#3B82F6',
+  },
+  guidelineTipText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#1E40AF',
+    lineHeight: 20,
+  },
+  guidelinesButton: {
+    backgroundColor: '#FF6B35',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  guidelinesButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

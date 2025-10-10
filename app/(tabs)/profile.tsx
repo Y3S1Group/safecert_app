@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router'
 import { auth, db } from '@/config/firebaseConfig';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { Bell, Building, CheckCircle, ChevronRight, HelpCircle, HelpCircleIcon, LockIcon, LogOut, LogOutIcon, Mail, Phone, Shield, User, Languages } from 'lucide-react-native';
+import { ArrowLeftRight, Bell, Building, CheckCircle, ChevronRight, HelpCircle, HelpCircleIcon, LockIcon, LogOut, LogOutIcon, Mail, Phone, Shield, User, Languages } from 'lucide-react-native';
 import CustomModal from '@/components/CustomModal';
 import EditProfileForm from '@/components/EditProfileForm';
 import { ActivityIndicator } from 'react-native-paper';
@@ -188,19 +188,26 @@ export default function profile() {
   };
 
   const handleSwitchToInstructor = () => {
-    Alert.alert(
-      t('profile.switchAccount'),
-      t('profile.switchConfirm'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        { 
-          text: t('profile.switch'), 
-          onPress: () => {
-            router.replace('/instructor/instructorDash');
-          } 
+    showAlert({
+      message: t('profile.switchConfirm'),
+      icon: ArrowLeftRight,
+      iconColor: '#FF6B35',
+      iconBgColor: '#FEE2E2',
+      buttons: [
+        {
+          text: t('common.cancel'),
+          style: 'cancel',
+          onPress: () => console.log('Cancelled')
         },
+        {
+          text: t('profile.switch'),
+          style: 'default',
+          onPress: () => {
+              router.replace('/instructor/instructorDash');
+          }
+        }
       ]
-    );
+    })
   };
 
   const handleNotifications = () => {

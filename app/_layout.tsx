@@ -1,51 +1,65 @@
 import { Stack, useRouter, useSegments } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, createContext, useContext, useCallback } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { auth } from "../config/firebaseConfig";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator } from "react-native";
+import { View } from "react-native";
 import { AlertProvider } from "@/contexts/AlertContext";
 import SnackbarProvider from "@/contexts/SnackbarContext";
 import { LanguageProvider } from "@/providers/languageContext"; // New
 
+import * as SplashScreen from 'expo-splash-screen';
+
+// Keep the splash screen visible while we fetch resources
+SplashScreen.preventAutoHideAsync();
+
+// Create a context for onboarding completion
+const OnboardingContext = createContext({
+  completeOnboarding: async () => {}
+});
+
+export const useOnboarding = () => useContext(OnboardingContext);
+
 export default function RootLayout() {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
   const [isFirstLaunch, setIsFirstLaunch] = useState<boolean | null>(null);
+  const [appIsReady, setAppIsReady] = useState(false);
   const router = useRouter();
   const segments = useSegments();
 
   useEffect(() => {
-    const checkFirstLaunch = async () => {
+    const initializeApp = async () => {
       try {
+        // Check onboarding status
         const value = await AsyncStorage.getItem('hasCompletedOnboarding');
-        setIsFirstLaunch(value === null);
+        const isFirst = value === null;
+        setIsFirstLaunch(isFirst);
+
+        // Wait for auth state
+        const unsubscribeAuth = onAuthStateChanged(auth, (authUser) => {
+          console.log("Auth state changed:", authUser ? "User logged in" : "User not logged in");
+          setUser(authUser);
+          setAppIsReady(true);
+        });
+
+        return () => unsubscribeAuth();
       } catch (error) {
-        console.error("AsyncStorage error: ", error);
+        console.error("Initialization error: ", error);
         setIsFirstLaunch(false);
+        setAppIsReady(true);
       }
     };
-    
-    checkFirstLaunch();
 
-    // Firebase Auth persistence will automatically handle login state
-    const unsubscribeAuth = onAuthStateChanged(auth, (authUser) => {
-      console.log("Auth state changed:", authUser ? "User logged in" : "User not logged in");
-      setUser(authUser);
-      setLoading(false);
-    });
-
-    return () => unsubscribeAuth();
+    initializeApp();
   }, []);
 
   useEffect(() => {
-    if (loading || isFirstLaunch === null) return;
+    if (!appIsReady || isFirstLaunch === null) return;
 
     const inAuthGroup = segments[0] === "(auth)";
     const inOnboardingGroup = segments[0] === "(onboarding)";
     const inTabsGroup = segments[0] === "(tabs)";
-    
 
     const allowedRoutes = ['createIncident', 'incidents', 'instructor', 'certificate', 'course', 'notifications', 'quiz'];
     const currentRoute = segments[0];
@@ -59,7 +73,6 @@ export default function RootLayout() {
 
     // User is not logged in
     if (!user) {
-      // If not first launch and not in auth group, redirect to auth
       if (!isFirstLaunch && !inAuthGroup) {
         router.replace("/(auth)/authScreen");
       }
@@ -70,29 +83,41 @@ export default function RootLayout() {
     if (user && !inTabsGroup && !isAllowedRoute) {
       router.replace("/(tabs)");
     }
-  }, [user, segments, loading, isFirstLaunch]);
+  }, [user, segments, appIsReady, isFirstLaunch]);
 
-  // Show loading screen while checking auth state and first launch
-  if (loading || isFirstLaunch === null) {
-    return (
-      <View style={{ flex: 1, backgroundColor: '#F9FAFB', justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#FF6B35" />
-      </View>
-    );
+  const completeOnboarding = async () => {
+    await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
+    setIsFirstLaunch(false); // Update state immediately
+  };
+
+  const onLayoutRootView = useCallback(async () => {
+    if (appIsReady && isFirstLaunch !== null) {
+      // Hide the splash screen
+      await SplashScreen.hideAsync();
+    }
+  }, [appIsReady, isFirstLaunch]);
+
+  // Don't render anything until app is ready - splash screen stays visible
+  if (!appIsReady || isFirstLaunch === null) {
+    return null;
   }
 
   return (
-    <LanguageProvider> {/* ← WRAP EVERYTHING WITH THIS */}
-      <AlertProvider>
-        <SnackbarProvider>
-          <StatusBar style='inverted' />
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(onboarding)" />
-            <Stack.Screen name="(auth)" />
-            <Stack.Screen name="(tabs)" />
-          </Stack>
-        </SnackbarProvider>
-      </AlertProvider>
-    </LanguageProvider> 
+    <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+     <LanguageProvider>
+      <OnboardingContext.Provider value={{ completeOnboarding }}>
+        <AlertProvider>
+          <SnackbarProvider>
+            <StatusBar style='inverted' />
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(onboarding)" />
+              <Stack.Screen name="(auth)" />
+              <Stack.Screen name="(tabs)" />
+            </Stack>
+          </SnackbarProvider>
+        </AlertProvider>
+      </OnboardingContext.Provider>
+     </LanguageProvider> 
+    </View>
   );
 }

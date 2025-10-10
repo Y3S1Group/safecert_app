@@ -251,12 +251,8 @@ export default function CreateIncident() {
         iconColor: '#10B981',
         iconBgColor: '#D1FAE5',
         autoClose: true,
-        autoCloseDelay: 2000
+        autoCloseDelay: 1500
       })
-
-      setTimeout(() => {
-        router.back()
-      }, 2000)
 
       router.back()
     } catch (error) {
@@ -399,28 +395,59 @@ export default function CreateIncident() {
                       })
                       return
                     }
+                    const loc = await Location.getCurrentPositionAsync({
+                      accuracy: Location.Accuracy.Balanced
+                    })
 
-                    const loc = await Location.getCurrentPositionAsync({})
                     const address = await Location.reverseGeocodeAsync({
                       latitude: loc.coords.latitude,
                       longitude: loc.coords.longitude,
                     })
-
-                    const locationData: LocationData = {
-                      latitude: loc.coords.latitude,
-                      longitude: loc.coords.longitude,
-                      address: address[0] ? `${address[0].street}, ${address[0].city}` : undefined
-                    }
-
-                    setCurrentLocation(locationData)
-
-                    // Fill the location input with GPS address
                     if (address[0]) {
-                      const city = address[0].city || ''
-                      const district = address[0].district || address[0].subregion || ''
-                      setLocation(`${city}${city && district ? ', ' : ''}${district}`)
+                      const isPlusCode = (str: string | null) => {
+                        if (!str) return false
+                        return /^[A-Z0-9]{4}\+[A-Z0-9]{2,3}$/.test(str)
+                      }
+                      const addressParts = [
+                        address[0].city,       
+                        address[0].district,    
+                        address[0].subregion,  
+                        address[0].region,       
+                        address[0].street,     
+                        address[0].name          
+                      ].filter(part => {
+                        if (!part) return false
+                        if (part === 'null' || part === 'undefined') return false
+                        if (isPlusCode(part)) return false 
+                        return true
+                      })
+                      
+                      const formattedAddress = addressParts.length > 0
+                        ? addressParts.slice(0, 2).join(', ')
+                        : `${loc.coords.latitude.toFixed(6)}, ${loc.coords.longitude.toFixed(6)}`
+                      const locationData: LocationData = {
+                        latitude: loc.coords.latitude,
+                        longitude: loc.coords.longitude,
+                        address: formattedAddress
+                      }
+                      setCurrentLocation(locationData)
+                      setLocation(formattedAddress)
+                      showSnackbar({
+                        message: 'GPS location detected successfully',
+                        type: 'success',
+                        duration: 2000
+                      })
                     } else {
-                      setLocation(`${loc.coords.latitude.toFixed(6)}, ${loc.coords.longitude.toFixed(6)}`)
+                      const coordsString = `${loc.coords.latitude.toFixed(6)}, ${loc.coords.longitude.toFixed(6)}`
+
+                      const locationData: LocationData = {
+                        latitude: loc.coords.latitude,
+                        longitude: loc.coords.longitude,
+                        address: coordsString
+                      }
+
+                      setCurrentLocation(locationData)
+                      setLocation(coordsString)
                     }
                   } catch (error) {
                     console.error('Error getting GPS location:', error)
@@ -432,7 +459,6 @@ export default function CreateIncident() {
                 }}
               >
                 <MapPinned size={18} color="#FF6B35" />
-
               </TouchableOpacity>
             </View>
           </View>
