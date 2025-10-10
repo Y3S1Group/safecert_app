@@ -7,6 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator } from "react-native";
 import { AlertProvider } from "@/contexts/AlertContext";
 import SnackbarProvider from "@/contexts/SnackbarContext";
+import { LanguageProvider } from "@/providers/languageContext"; // New
 
 export default function RootLayout() {
   const [user, setUser] = useState<User | null>(null);
@@ -81,15 +82,17 @@ export default function RootLayout() {
   }
 
   return (
-    <AlertProvider>
-      <SnackbarProvider>
-        <StatusBar style='inverted' />
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(onboarding)" />
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="(tabs)" />
-        </Stack>
-      </SnackbarProvider>
-    </AlertProvider>
+    <LanguageProvider> {/* ← WRAP EVERYTHING WITH THIS */}
+      <AlertProvider>
+        <SnackbarProvider>
+          <StatusBar style='inverted' />
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(onboarding)" />
+            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="(tabs)" />
+          </Stack>
+        </SnackbarProvider>
+      </AlertProvider>
+    </LanguageProvider> 
   );
 }
