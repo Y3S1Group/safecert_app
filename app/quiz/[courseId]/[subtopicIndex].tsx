@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { doc, getDoc, setDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, setDoc, getDocs, updateDoc, arrayUnion, Firestore } from 'firebase/firestore';
 import { db, auth } from '@/config/firebaseConfig';
 import { QuizQuestion, QuizAttempt } from '@/types/quiz';
 import { ArrowLeft, CheckCircle, XCircle } from 'lucide-react-native';
+import { sendNotification } from '@/utils/notifications';
+import { getAIRecommendations } from '@/config/recommendationService';
 
 export default function QuizPage() {
   const { courseId, subtopicIndex, quizData } = useLocalSearchParams();
@@ -73,7 +75,6 @@ export default function QuizPage() {
     setScore(finalScore);
     setShowResults(true);
 
-    // Save quiz attempt and update progress
     try {
       const user = auth.currentUser;
       if (!user || !user.email) return;
@@ -105,6 +106,24 @@ export default function QuizPage() {
               completedSubtopics: arrayUnion(parseInt(subtopicIndex as string)),
               lastUpdated: new Date(),
             });
+
+            // Check if course is now 100% complete
+            const courseSnap = await getDoc(doc(db, 'courses', courseId as string));
+            if (courseSnap.exists()) {
+              const courseData = courseSnap.data();
+              const totalSubtopics = courseData.subtopicsCount || 0;
+              const newCompletedCount = completedSubtopics.length + 1;
+
+              // COURSE COMPLETION NOTIFICATION
+              if (newCompletedCount === totalSubtopics) {
+                await sendNotification(
+                  user.uid,
+                  'Course Completed!',
+                  `Congratulations! You've completed "${courseData.title}". Check the home page for your personalized recommendations!`,
+                  'success'
+                );
+              }
+            }
           }
         } else {
           // Create new progress document
@@ -114,6 +133,20 @@ export default function QuizPage() {
             completedSubtopics: [parseInt(subtopicIndex as string)],
             lastUpdated: new Date(),
           });
+
+          // Check if this single subtopic completes the course
+          const courseSnap = await getDoc(doc(db, 'courses', courseId as string));
+          if (courseSnap.exists()) {
+            const courseData = courseSnap.data();
+            if (courseData.subtopicsCount === 1) {
+              await sendNotification(
+                user.uid,
+                'Course Completed!',
+                `Congratulations! You've completed "${courseData.title}". Check the home page for your personalized recommendations!`,
+                'success'
+              );
+            }
+          }
         }
       }
     } catch (error) {
@@ -141,7 +174,7 @@ export default function QuizPage() {
           )}
           
           <Text style={styles.resultsTitle}>
-            {passed ? 'Congratulations! 🎉' : 'Keep Trying!'}
+            {passed ? 'Congratulations!' : 'Keep Trying!'}
           </Text>
           
           <Text style={styles.scoreText}>Your Score: {score.toFixed(0)}%</Text>
@@ -360,6 +393,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
+    marginBottom: 40,
   },
   navButton: {
     flex: 1,
@@ -432,3 +466,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
+function collection(db: Firestore, arg1: string): import("@firebase/firestore").Query<unknown, import("@firebase/firestore").DocumentData> {
+  throw new Error('Function not implemented.');
+}

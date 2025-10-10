@@ -147,7 +147,6 @@ export default function Home() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user && user.email) {
         await fetchUserData(user.email);
-        await fetchRealStats(user.email, user.uid);
       }
     });
     return () => unsubscribe();
@@ -169,6 +168,28 @@ export default function Home() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setUnreadNotifications(snapshot.size);
     });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Listen to enrollment changes
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user || !user.email) return;
+
+    const unsubscribe = onSnapshot(
+      doc(db, 'users', user.email),
+      async (userDoc) => {
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setUserInfo({
+            name: userData.name || 'User',
+            department: userData.department || 'Not assigned'
+          });
+          setEnrolledCourseIds(userData.courses || []);
+        }
+      }
+    );
 
     return () => unsubscribe();
   }, []);
@@ -195,7 +216,7 @@ export default function Home() {
       }
 
       const today = new Date().toDateString();
-      const enrollmentKey = enrolledCourseIds.sort().join(',');
+      const enrollmentKey = [...enrolledCourseIds].sort().join(',');
 
       if (
         lastFetchDate === today &&
@@ -267,53 +288,78 @@ export default function Home() {
     }
   };
 
-  const fetchRealStats = async (email: string, uid: string) => {
-    try {
-      const userDoc = await getDoc(doc(db, 'users', email));
-      const enrolledIds = userDoc.exists() ? (userDoc.data().courses || []) : [];
+  // Real-time stats listener
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user || !user.email || courses.length === 0) return;
 
-      const progressSnapshot = await getDocs(
-        collection(db, 'users', email, 'courseProgress')
-      );
+    const email = user.email;
+    const uid = user.uid;
 
-      let completedCount = 0;
-      let pendingCount = 0;
+    // Listen to courseProgress changes
+    const unsubscribeProgress = onSnapshot(
+      collection(db, 'users', email, 'courseProgress'),
+      async (progressSnapshot) => {
+        // Fetch fresh enrolled courses
+        const userDoc = await getDoc(doc(db, 'users', email));
+        const enrolledIds = userDoc.exists() ? (userDoc.data().courses || []) : [];
 
-      progressSnapshot.forEach((progressDoc) => {
-        const data = progressDoc.data();
-        const courseId = progressDoc.id;
+        let completedCount = 0;
+        let pendingCount = 0;
 
-        const course = courses.find(c => c.id === courseId);
-        const totalSubtopics = course?.subtopicsCount || 0;
-        const completedSubtopics = (data.completedSubtopics || []).length;
+        progressSnapshot.forEach((progressDoc) => {
+          const data = progressDoc.data();
+          const courseId = progressDoc.id;
+          
+          // Only count if user is still enrolled
+          if (!enrolledIds.includes(courseId)) {
+            return;
+          }
 
-        if (totalSubtopics > 0 && completedSubtopics === totalSubtopics) {
-          completedCount++;
-        } else if (completedSubtopics > 0) {
-          pendingCount++;
-        }
-      });
+          // Find the course to get subtopics count
+          const course = courses.find(c => c.id === courseId);
+          const totalSubtopics = course?.subtopicsCount || 0;
+          const completedSubtopics = (data.completedSubtopics || []).length;
 
-      const coursesWithNoProgress = enrolledIds.filter((id: string) => {
-        return !progressSnapshot.docs.find(doc => doc.id === id);
-      });
-      pendingCount += coursesWithNoProgress.length;
+          if (totalSubtopics > 0 && completedSubtopics === totalSubtopics) {
+            completedCount++;
+          } else if (completedSubtopics > 0) {
+            pendingCount++;
+          }
+        });
 
-      const reportsQuery = query(
-        collection(db, 'incidents'),
-        where('reportedByUid', '==', uid)
-      );
-      const reportsSnapshot = await getDocs(reportsQuery);
+        // Add courses with no progress started (but are enrolled)
+        const coursesWithNoProgress = enrolledIds.filter((id: string) => {
+          return !progressSnapshot.docs.find(doc => doc.id === id);
+        });
+        pendingCount += coursesWithNoProgress.length;
 
-      setStats({
-        completedTrainings: completedCount,
-        pendingTrainings: pendingCount,
+        setStats(prev => ({
+          ...prev,
+          completedTrainings: completedCount,
+          pendingTrainings: pendingCount
+        }));
+      }
+    );
+
+    // Listen to incidents changes for reports count
+    const reportsQuery = query(
+      collection(db, 'incidents'),
+      where('reportedByUid', '==', uid)
+    );
+
+    const unsubscribeReports = onSnapshot(reportsQuery, (reportsSnapshot) => {
+      setStats(prev => ({
+        ...prev,
         reportsSubmitted: reportsSnapshot.size
-      });
-    } catch (error) {
-      console.error('Error fetching stats:', error);
-    }
-  };
+      }));
+    });
+
+    return () => {
+      unsubscribeProgress();
+      unsubscribeReports();
+    };
+  }, [courses, auth.currentUser]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -398,7 +444,7 @@ export default function Home() {
                 <Shield size={18} color="#F97316" />
               </View>
               <View style={[styles.headerTipContent, { opacity: fadeAnim }]}>
-                <Text style={styles.headerTipTitle}>Safety Tip</Text>
+                <Text style={styles.headerTipTitle}>Today's Safety Tip</Text>
                 <Text style={styles.headerTipText}>
                   {tipOfTheDay}
                 </Text>
@@ -615,26 +661,29 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 12,
+    marginStart: 2,
   },
   greeting: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#000000',
+    color: '#1a1a1a',
     flex: 1,
   },
   greetingTime: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#000000',
+    color: '#1a1a1a',
   },
   notificationButton: {
-    width: 48,
-    height: 48,
+    width: 42,
+    height: 42,
     borderRadius: 24,
     backgroundColor: '#ffffffff',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
+    marginEnd: 6,
+    marginTop: 6,
   },
   notificationBadge: {
     position: 'absolute',
