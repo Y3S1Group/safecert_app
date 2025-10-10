@@ -4,12 +4,14 @@ import { addDoc, collection, setDoc, doc } from "firebase/firestore";
 import { db } from "@/config/firebaseConfig"; 
 import { useRouter } from "expo-router";
 import Stepper from '@/components/stepper';
+import { useLanguage } from '@/providers/languageContext';
 
 export default function CreateCourse() {
   const [courseTitle, setCourseTitle] = useState("");
   const [courseDescription, setCourseDescription] = useState("");
   const [customId, setCustomId] = useState("");
   const router = useRouter();
+  const { t } = useLanguage();
 
   // Generate custom ID like SAFE-COURSE-001, SAFE-COURSE-002, etc.
   useEffect(() => {
@@ -22,7 +24,7 @@ export default function CreateCourse() {
 
   const handleCreateCourse = async () => {
     if (!courseTitle.trim() || !courseDescription.trim()) {
-      Alert.alert("Validation", "Please fill in all fields.");
+      Alert.alert(t('common.validation'), t('course.fillAllFields'));
       return;
     }
 
@@ -35,7 +37,7 @@ export default function CreateCourse() {
         status: "draft",
       });
 
-      Alert.alert("Success", "Course created successfully!");
+      Alert.alert(t('common.success'), t('course.createSuccess'));
       // Move to next step (certificate template creation)
       router.push({
         pathname: "/certificate/certificates",
@@ -46,7 +48,7 @@ export default function CreateCourse() {
       setCourseDescription("");
     } catch (error) {
       console.error("Error creating course:", error);
-      Alert.alert("Error", "Failed to create course. Try again.");
+      Alert.alert(t('common.error'), t('course.createError'));
     }
   };
 
@@ -56,11 +58,14 @@ export default function CreateCourse() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Stepper currentStep={1} steps={['Create Course', 'Create Certificate']} />
-      <Text style={styles.header}>Create New Course</Text>
+      <Stepper 
+        currentStep={1} 
+        steps={[t('course.createCourse'), t('course.createCertificate')]} 
+      />
+      <Text style={styles.header}>{t('course.createNewCourse')}</Text>
 
       <View style={styles.field}>
-        <Text style={styles.label}>Course ID</Text>
+        <Text style={styles.label}>{t('course.courseId')}</Text>
         <TextInput
           style={[styles.input, { backgroundColor: "#f1f1f1" }]}
           value={customId}
@@ -69,31 +74,31 @@ export default function CreateCourse() {
       </View>
 
       <View style={styles.field}>
-        <Text style={styles.label}>Course Title</Text>
+        <Text style={styles.label}>{t('course.courseTitle')}</Text>
         <TextInput
           style={styles.input}
           value={courseTitle}
           onChangeText={setCourseTitle}
-          placeholder="Enter course title"
+          placeholder={t('course.enterCourseTitle')}
         />
       </View>
 
       <View style={styles.field}>
-        <Text style={styles.label}>Description</Text>
+        <Text style={styles.label}>{t('course.description')}</Text>
         <TextInput
           style={[styles.input, { height: 100, textAlignVertical: "top" }]}
           value={courseDescription}
           onChangeText={setCourseDescription}
-          placeholder="Enter short description"
+          placeholder={t('course.enterDescription')}
           multiline
         />
       </View>
 
       <TouchableOpacity style={styles.button} onPress={handleCreateCourse}>
-        <Text style={styles.buttonText}>Save & Continue</Text>
+        <Text style={styles.buttonText}>{t('course.saveContinue')}</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-        <Text style={styles.buttonText}>Back</Text>
+        <Text style={styles.buttonText}>{t('common.back')}</Text>
       </TouchableOpacity>
     </ScrollView>
   );

@@ -18,6 +18,7 @@ import { auth, db } from '@/config/firebaseConfig'
 import { onAuthStateChanged } from 'firebase/auth'
 import { doc, getDoc } from 'firebase/firestore'
 import { collection, query, where, onSnapshot } from 'firebase/firestore'
+import { useLanguage } from '@/providers/languageContext' // Added
 
 interface UserInfo {
   name: string;
@@ -33,6 +34,7 @@ interface DashboardStats {
 
 export default function Home() {
   const router = useRouter();
+  const { t } = useLanguage(); // Added
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [stats, setStats] = useState<DashboardStats>({
     completedTrainings: 12,
@@ -73,7 +75,6 @@ export default function Home() {
     });
   }, []);
 
-
   useEffect(() => {
     if (!auth.currentUser) return 
 
@@ -96,8 +97,8 @@ export default function Home() {
       if (userDoc.exists()) {
         const userData = userDoc.data();
         setUserInfo({
-          name: userData.name || 'User',
-          department: userData.department || 'Not assigned'
+          name: userData.name || t('common.user'),
+          department: userData.department || t('common.notAssigned')
         });
       }
     } catch (error) {
@@ -107,17 +108,17 @@ export default function Home() {
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 3) return 'Welcome';
-    if (hour < 12) return 'Good morning';
-    if (hour < 16) return 'Good afternoon';
-    return 'Good evening';
+    if (hour < 3) return t('home.greetings.welcome');
+    if (hour < 12) return t('home.greetings.morning');
+    if (hour < 16) return t('home.greetings.afternoon');
+    return t('home.greetings.evening');
   };
 
   const quickActions = [
     {
       id: 'training',
-      title: 'Start Training',
-      subtitle: 'Continue learning',
+      title: t('home.quickActions.startTraining'),
+      subtitle: t('home.quickActions.continueLearn'),
       icon: BookOpen,
       color: '#FF6B35',
       bgColor: 'rgba(255, 107, 53, 0.1)',
@@ -125,8 +126,8 @@ export default function Home() {
     },
     {
       id: 'certificates',
-      title: 'View Certificates',
-      subtitle: 'Check status',
+      title: t('home.quickActions.viewCertificates'),
+      subtitle: t('home.quickActions.checkStatus'),
       icon: Award,
       color: '#1B365D',
       bgColor: 'rgba(27, 54, 93, 0.1)',
@@ -134,8 +135,8 @@ export default function Home() {
     },
     {
       id: 'report',
-      title: 'Report Incident',
-      subtitle: 'Quick reporting',
+      title: t('home.quickActions.reportIncident'),
+      subtitle: t('home.quickActions.quickReporting'),
       icon: AlertTriangle,
       color: '#B03A2E',
       bgColor: 'rgba(176, 58, 46, 0.1)',
@@ -143,8 +144,8 @@ export default function Home() {
     },
     {
       id: 'profile',
-      title: 'My Profile',
-      subtitle: 'Update info',
+      title: t('home.quickActions.myProfile'),
+      subtitle: t('home.quickActions.updateInfo'),
       icon: Users,
       color: '#16A085',
       bgColor: 'rgba(22, 160, 133, 0.1)',
@@ -155,24 +156,24 @@ export default function Home() {
   const recentActivity = [
     {
       id: 1,
-      title: 'Completed: Fire Safety Training',
-      time: '2 hours ago',
+      title: t('home.recentActivity.completedTraining'),
+      time: `2 ${t('home.recentActivity.hoursAgo')}`,
       type: 'training',
       icon: CheckCircle,
       color: '#16A085'
     },
     {
       id: 2,
-      title: 'Certificate Renewal Reminder',
-      time: '1 day ago',
+      title: t('home.recentActivity.certRenewal'),
+      time: `1 ${t('home.recentActivity.dayAgo')}`,
       type: 'certificate',
       icon: Clock,
       color: '#F39C12'
     },
     {
       id: 3,
-      title: 'Safety Report Submitted',
-      time: '3 days ago',
+      title: t('home.recentActivity.reportSubmitted'),
+      time: `3 ${t('home.recentActivity.daysAgo')}`,
       type: 'report',
       icon: Shield,
       color: '#3498DB'
@@ -186,7 +187,7 @@ export default function Home() {
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={styles.greeting}>
-              {getGreeting()}, {userInfo?.name?.split(' ')[0] || 'User'}!
+              {getGreeting()}, {userInfo?.name?.split(' ')[0] || t('common.user')}!
             </Text>
             {/* <Text style={styles.department}>{userInfo?.department}</Text> */}
           </View>
@@ -207,42 +208,42 @@ export default function Home() {
 
         {/* Dashboard Stats */}
         <View style={styles.statsContainer}>
-          <Text style={styles.sectionTitle}>Your Progress</Text>
+          <Text style={styles.sectionTitle}>{t('home.stats.yourProgress')}</Text>
           <View style={styles.statsGrid}>
             <View style={styles.statCard}>
               <View style={[styles.statIcon, { backgroundColor: 'rgba(255, 107, 53, 0.1)' }]}>
                 <BookOpen size={24} color="#FF6B35" />
               </View>
               <Text style={styles.statNumber}>{stats.completedTrainings}</Text>
-              <Text style={styles.statLabel}>Trainings Completed</Text>
+              <Text style={styles.statLabel}>{t('home.stats.trainingsCompleted')}</Text>
             </View>
             <View style={styles.statCard}>
               <View style={[styles.statIcon, { backgroundColor: 'rgba(27, 54, 93, 0.1)' }]}>
                 <Award size={24} color="#1B365D" />
               </View>
               <Text style={styles.statNumber}>{stats.activeCertifications}</Text>
-              <Text style={styles.statLabel}>Active Certificates</Text>
+              <Text style={styles.statLabel}>{t('home.stats.activeCertificates')}</Text>
             </View>
             <View style={styles.statCard}>
               <View style={[styles.statIcon, { backgroundColor: 'rgba(241, 196, 15, 0.1)' }]}>
                 <Clock size={24} color="#F1C40F" />
               </View>
               <Text style={styles.statNumber}>{stats.pendingTrainings}</Text>
-              <Text style={styles.statLabel}>Pending Trainings</Text>
+              <Text style={styles.statLabel}>{t('home.stats.pendingTrainings')}</Text>
             </View>
             <View style={styles.statCard}>
               <View style={[styles.statIcon, { backgroundColor: 'rgba(176, 58, 46, 0.1)' }]}>
                 <AlertTriangle size={24} color="#B03A2E" />
               </View>
               <Text style={styles.statNumber}>{stats.reportsSubmitted}</Text>
-              <Text style={styles.statLabel}>Reports Submitted</Text>
+              <Text style={styles.statLabel}>{t('home.stats.reportsSubmitted')}</Text>
             </View>
           </View>
         </View>
 
         {/* Quick Actions */}
         <View style={styles.quickActionsContainer}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <Text style={styles.sectionTitle}>{t('home.quickActionsTitle')}</Text>
           <View style={styles.actionsGrid}>
             {quickActions.map((action) => {
               const IconComponent = action.icon;
@@ -266,7 +267,7 @@ export default function Home() {
 
         {/* Recent Activity */}
         <View style={styles.recentActivityContainer}>
-          <Text style={styles.sectionTitle}>Recent Activity</Text>
+          <Text style={styles.sectionTitle}>{t('home.recentActivityTitle')}</Text>
           <View style={styles.activityList}>
             {recentActivity.map((activity) => {
               const IconComponent = activity.icon;
@@ -289,10 +290,10 @@ export default function Home() {
         <View style={styles.tipContainer}>
           <View style={styles.tipHeader}>
             <Shield size={20} color="#16A085" />
-            <Text style={styles.tipTitle}>Safety Tip of the Day</Text>
+            <Text style={styles.tipTitle}>{t('home.safetyTip.title')}</Text>
           </View>
           <Text style={styles.tipContent}>
-            Always wear proper PPE when entering construction zones. Your safety is our priority.
+            {t('home.safetyTip.content')}
           </Text>
         </View>
       </ScrollView>

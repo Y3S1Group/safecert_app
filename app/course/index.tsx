@@ -15,11 +15,13 @@ import { Plus } from 'lucide-react-native';
 import { db } from '../../config/firebaseConfig';
 import { collection, getDocs } from 'firebase/firestore';
 import { Course } from '../../types/course';
+import { useLanguage } from '@/providers/languageContext';
 
 export default function CourseListScreen() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const { t } = useLanguage();
 
   const loadCourses = async () => {
     try {
@@ -77,7 +79,7 @@ export default function CourseListScreen() {
         <Text style={styles.courseTitle}>{item.title}</Text>
         <View style={styles.subtopicBadge}>
           <Text style={styles.subtopicCount}>
-            {item.subtopics.length} {item.subtopics.length === 1 ? 'Topic' : 'Topics'}
+            {item.subtopics.length} {item.subtopics.length === 1 ? t('course.topic') : t('course.topics')}
           </Text>
         </View>
       </View>
@@ -85,7 +87,7 @@ export default function CourseListScreen() {
         {item.description}
       </Text>
       <View style={styles.courseFooter}>
-        <Text style={styles.viewButton}>View Course →</Text>
+        <Text style={styles.viewButton}>{t('course.viewCourse')} →</Text>
       </View>
     </TouchableOpacity>
   );
@@ -94,7 +96,7 @@ export default function CourseListScreen() {
     return (
       <SafeAreaView style={styles.centerContainer} edges={['top']}>
         <ActivityIndicator size="large" color="#FF6B35" />
-        <Text style={styles.loadingText}>Loading courses...</Text>
+        <Text style={styles.loadingText}>{t('course.loadingCourses')}</Text>
       </SafeAreaView>
     );
   }
@@ -102,28 +104,28 @@ export default function CourseListScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Training Courses</Text>
+        <Text style={styles.headerTitle}>{t('course.trainingCourses')}</Text>
         <TouchableOpacity
           style={styles.createButton}
           onPress={() => router.push('/course/new')}
         >
           <Plus size={20} color="#FFFFFF" />
-          <Text style={styles.createButtonText}>Create</Text>
+          <Text style={styles.createButtonText}>{t('course.create')}</Text>
         </TouchableOpacity>
       </View>
 
       {courses.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyTitle}>No Courses Yet</Text>
+          <Text style={styles.emptyTitle}>{t('course.noCoursesYet')}</Text>
           <Text style={styles.emptyText}>
-            Create your first course to get started with training
+            {t('course.createFirstCourse')}
           </Text>
           <TouchableOpacity
             style={styles.emptyButton}
             onPress={() => router.push('/course/new')}
           >
             <Plus size={20} color="#FFFFFF" />
-            <Text style={styles.emptyButtonText}>Create Course</Text>
+            <Text style={styles.emptyButtonText}>{t('course.createCourse')}</Text>
           </TouchableOpacity>
         </View>
       ) : (

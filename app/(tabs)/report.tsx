@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import FloatingButton from '@/components/FloatingButton'
 import { useSnackbar } from '@/contexts/SnackbarContext'
 import { useAlert } from '@/contexts/AlertContext'
+import { useLanguage } from '@/providers/languageContext' // Added
 
 interface Incident {
   id: string;
@@ -30,13 +31,14 @@ interface Incident {
 
 export default function Reports() {
   const router = useRouter()
+  const { t } = useLanguage() // Added
   const [incidents, setIncidents] = useState<Incident[]>([])
   const [filteredIncidents, setFilteredIncidents] = useState<Incident[]>([])
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const { showSnackbar } = useSnackbar()
-    const { showAlert } = useAlert()
+  const { showAlert } = useAlert()
 
   useEffect(() => {
     if (!auth.currentUser) return
@@ -80,38 +82,38 @@ export default function Reports() {
 
   const handleDeleteIncident = async (incidentId: string) => {
     showAlert({
-      message: 'Are you sure you want to delete this incident report? This action cannot be undone.',
+      message: t('reports.deleteConfirm'),
       icon: Trash2,
-      iconColor: '#EF4444' ,
+      iconColor: '#EF4444',
       iconBgColor: '#eeefeeff',
       buttons: [
         {
-          text: 'Cancel',
+          text: t('common.cancel'),
           style: 'cancel',
           onPress: () => console.log('Cancelled')
         },
         {
-          text: 'Delete',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
               await deleteDoc(doc(db, 'incidents', incidentId))
               showAlert({
-                      message: 'Report deleted successfully',
-                      icon: CheckCircle,
-                      iconColor: '#10B981',
-                      iconBgColor: '#D1FAE5',
-                      autoClose: true,
-                      autoCloseDelay: 2000
-                    })
+                message: t('reports.deleteSuccess'),
+                icon: CheckCircle,
+                iconColor: '#10B981',
+                iconBgColor: '#D1FAE5',
+                autoClose: true,
+                autoCloseDelay: 2000
+              })
               
-                    setTimeout(() => {
-                      router.back()
-                    }, 2000)
+              setTimeout(() => {
+                router.back()
+              }, 2000)
             } catch (error) {
               console.error('Error deleting incident:', error)
               showSnackbar({
-                message: 'Failed to delete report',
+                message: t('reports.deleteError'),
                 type: 'error'
               })
             }
@@ -141,6 +143,26 @@ export default function Reports() {
     }
   }
 
+  const getStatusLabel = (status: string) => {
+    const statusMap: { [key: string]: string } = {
+      'pending': t('reports.status.pending'),
+      'investigating': t('reports.status.investigating'),
+      'resolved': t('reports.status.resolved'),
+      'closed': t('reports.status.closed')
+    }
+    return statusMap[status] || status.charAt(0).toUpperCase() + status.slice(1)
+  }
+
+  const getPriorityLabel = (priority: string) => {
+    const priorityMap: { [key: string]: string } = {
+      'low': t('reports.priority.low'),
+      'medium': t('reports.priority.medium'),
+      'high': t('reports.priority.high'),
+      'critical': t('reports.priority.critical')
+    }
+    return priorityMap[priority]?.toUpperCase() || priority.toUpperCase()
+  }
+
   const renderIncidentCard = ({ item }: { item: Incident }) => (
     <TouchableOpacity 
       style={styles.incidentCard}
@@ -157,12 +179,12 @@ export default function Reports() {
             <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
               <View style={[styles.statusDot, { backgroundColor: getStatusColor(item.status) }]} />
               <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
-                {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+                {getStatusLabel(item.status)}
               </Text>
             </View>
             <View style={[styles.priorityBadge, { borderColor: getPriorityColor(item.priority) }]}>
               <Text style={[styles.priorityText, { color: getPriorityColor(item.priority) }]}>
-                {item.priority.toUpperCase()}
+                {getPriorityLabel(item.priority)}
               </Text>
             </View>
           </View>
@@ -190,7 +212,7 @@ export default function Reports() {
               {item.createdAt?.toDate?.()?.toLocaleDateString('en-US', { 
                 month: 'short', 
                 day: 'numeric' 
-              }) || 'Recent'}
+              }) || t('reports.recent')}
             </Text>
           </View>
           
@@ -220,7 +242,7 @@ export default function Reports() {
             }}
           >
             <Eye size={16} color="#6B7280" />
-            <Text style={styles.actionText}>View</Text>
+            <Text style={styles.actionText}>{t('reports.actions.view')}</Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
@@ -231,7 +253,7 @@ export default function Reports() {
             }}
           >
             <Edit size={16} color="#6B7280" />
-            <Text style={styles.actionText}>Edit</Text>
+            <Text style={styles.actionText}>{t('reports.actions.edit')}</Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
@@ -242,7 +264,7 @@ export default function Reports() {
             }}
           >
             <Trash2 size={16} color="#EF4444" />
-            <Text style={[styles.actionText, styles.deleteText]}>Delete</Text>
+            <Text style={[styles.actionText, styles.deleteText]}>{t('reports.actions.delete')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -254,7 +276,7 @@ export default function Reports() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Incident Reports</Text>
+          <Text style={styles.headerTitle}>{t('reports.title')}</Text>
         </View>
       </View>
 
@@ -266,7 +288,7 @@ export default function Reports() {
             <Search size={18} color="#9CA3AF" />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search by location, type, or description..."
+              placeholder={t('reports.searchPlaceholder')}
               placeholderTextColor="#9CA3AF"
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -287,11 +309,11 @@ export default function Reports() {
           contentContainerStyle={styles.filterContent}
         >
           {[
-            { key: 'all', label: 'All', count: incidents.length },
-            { key: 'pending', label: 'Pending', count: incidents.filter(i => i.status === 'pending').length },
-            { key: 'investigating', label: 'In Progress', count: incidents.filter(i => i.status === 'investigating').length },
-            { key: 'resolved', label: 'Resolved', count: incidents.filter(i => i.status === 'resolved').length },
-            { key: 'closed', label: 'Closed', count: incidents.filter(i => i.status === 'closed').length },
+            { key: 'all', label: t('reports.filters.all'), count: incidents.length },
+            { key: 'pending', label: t('reports.filters.pending'), count: incidents.filter(i => i.status === 'pending').length },
+            { key: 'investigating', label: t('reports.filters.inProgress'), count: incidents.filter(i => i.status === 'investigating').length },
+            { key: 'resolved', label: t('reports.filters.resolved'), count: incidents.filter(i => i.status === 'resolved').length },
+            { key: 'closed', label: t('reports.filters.closed'), count: incidents.filter(i => i.status === 'closed').length },
           ].map((filter) => (
             <TouchableOpacity
               key={filter.key}
@@ -326,7 +348,7 @@ export default function Reports() {
         {searchQuery.length > 0 && (
           <View style={styles.resultsHeader}>
             <Text style={styles.resultsText}>
-              {filteredIncidents.length} result{filteredIncidents.length !== 1 ? 's' : ''} found
+              {filteredIncidents.length} {filteredIncidents.length === 1 ? t('reports.resultFound') : t('reports.resultsFound')}
             </Text>
           </View>
         )}
@@ -342,9 +364,9 @@ export default function Reports() {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <AlertTriangle size={48} color="#D1D5DB" />
-              <Text style={styles.emptyTitle}>No incident reports</Text>
+              <Text style={styles.emptyTitle}>{t('reports.empty.title')}</Text>
               <Text style={styles.emptyText}>
-                {searchQuery ? 'Try adjusting your search' : 'Create your first incident report to get started'}
+                {searchQuery ? t('reports.empty.searchText') : t('reports.empty.noReports')}
               </Text>
             </View>
           }

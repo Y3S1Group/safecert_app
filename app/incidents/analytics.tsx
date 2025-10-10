@@ -7,6 +7,7 @@ import { auth, db } from '@/config/firebaseConfig'
 import { useRouter } from 'expo-router'
 import { LineChart, BarChart, PieChart, ProgressChart } from 'react-native-chart-kit'
 import { Svg } from 'react-native-svg'
+import { useLanguage } from '@/providers/languageContext' // NEW
 
 const { width } = Dimensions.get('window')
 
@@ -25,6 +26,7 @@ interface AnalyticsData {
 
 export default function Analytics() {
   const router = useRouter()
+  const { t } = useLanguage() // NEW
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d' | '1y'>('7d')
@@ -140,7 +142,8 @@ export default function Analytics() {
 
     // Tip based on critical incidents
     if (analytics.criticalIncidents > 0) {
-      tips.push(`${analytics.criticalIncidents} critical incidents this period - Review emergency procedures with your team`)
+      // Since t() doesn't support interpolation, build the string manually
+      tips.push(`${analytics.criticalIncidents} ${t('analytics.tips.criticalIncidentsDetected')}`)
     }
 
     // Tip based on priority distribution
@@ -148,16 +151,16 @@ export default function Analytics() {
     const highCount = analytics.incidentsByPriority.find((p: any) => p.priority === 'high')?.count || 0
 
     if (criticalCount > 0 || highCount > 3) {
-      tips.push('High-risk incidents detected - Ensure all safety equipment is functional and accessible')
+      tips.push(t('analytics.tips.highRiskDetected'))
     }
 
     // Generic safety reminder
     if (incidents.length > 10) {
-      tips.push('Multiple incidents reported - Conduct a safety audit and refresher training for all staff')
+      tips.push(t('analytics.tips.multipleIncidents'))
     } else if (incidents.length > 0) {
-      tips.push('Stay alert and report any unsafe conditions immediately to prevent future incidents')
+      tips.push(t('analytics.tips.stayAlert'))
     } else {
-      tips.push('Great job! Keep following safety protocols and maintain vigilance')
+      tips.push(t('analytics.tips.greatJob'))
     }
 
     return tips.slice(0, 3)
@@ -210,11 +213,22 @@ export default function Analytics() {
 
   const getTimeRangeLabel = (range: string) => {
     switch (range) {
-      case '7d': return 'Last 7 Days'
-      case '30d': return 'Last 30 Days'
-      case '90d': return 'Last 90 Days'
-      case '1y': return 'Last Year'
-      default: return 'Last 30 Days'
+      case '7d': return t('analytics.timeRange.7days')
+      case '30d': return t('analytics.timeRange.30days')
+      case '90d': return t('analytics.timeRange.90days')
+      case '1y': return t('analytics.timeRange.1year')
+      default: return t('analytics.timeRange.30days')
+    }
+  }
+
+  // NEW: Function to get translated priority labels
+  const getPriorityLabel = (priority: string) => {
+    switch (priority) {
+      case 'low': return t('reports.priority.low')
+      case 'medium': return t('reports.priority.medium')
+      case 'high': return t('reports.priority.high')
+      case 'critical': return t('reports.priority.critical')
+      default: return priority
     }
   }
 
@@ -225,8 +239,8 @@ export default function Analytics() {
           <View style={styles.loadingIconContainer}>
             <Activity size={40} color="#FF6B35" />
           </View>
-          <Text style={styles.loadingText}>Analyzing data...</Text>
-          <Text style={styles.loadingSubtext}>Please wait</Text>
+          <Text style={styles.loadingText}>{t('analytics.analyzingData')}</Text>
+          <Text style={styles.loadingSubtext}>{t('analytics.pleaseWait')}</Text>
         </View>
       </SafeAreaView>
     )
@@ -243,7 +257,7 @@ export default function Analytics() {
           <ChevronLeft size={24} color="#111827" />
         </TouchableOpacity>
         <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Analytics</Text>
+          <Text style={styles.headerTitle}>{t('analytics.title')}</Text>
           <Text style={styles.headerSubtitle}>{getTimeRangeLabel(timeRange)}</Text>
         </View>
         <View style={styles.headerIcon}>
@@ -264,10 +278,10 @@ export default function Analytics() {
             contentContainerStyle={styles.timeRangeContent}
           >
             {[
-              { key: '7d', label: '7 Days' },
-              { key: '30d', label: '30 Days' },
-              { key: '90d', label: '90 Days' },
-              { key: '1y', label: '1 Year' }
+              { key: '7d', label: t('analytics.timeRangeButtons.7days') },
+              { key: '30d', label: t('analytics.timeRangeButtons.30days') },
+              { key: '90d', label: t('analytics.timeRangeButtons.90days') },
+              { key: '1y', label: t('analytics.timeRangeButtons.1year') }
             ].map((range) => (
               <TouchableOpacity
                 key={range.key}
@@ -292,7 +306,7 @@ export default function Analytics() {
         <View style={styles.statsBar}>
           <View style={styles.statItem}>
             <Text style={styles.statValue}>{analyticsData.totalIncidents}</Text>
-            <Text style={styles.statLabel}>Total Incidents</Text>
+            <Text style={styles.statLabel}>{t('analytics.totalIncidents')}</Text>
             {analyticsData.trendIndicators.incidentChange !== 0 && (
               <Text style={[
                 styles.trendBadge,
@@ -305,7 +319,7 @@ export default function Analytics() {
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
             <Text style={[styles.statValue, { color: '#EF4444' }]}>{analyticsData.criticalIncidents}</Text>
-            <Text style={styles.statLabel}>Critical</Text>
+            <Text style={styles.statLabel}>{t('analytics.critical')}</Text>
             {analyticsData.trendIndicators.criticalChange !== 0 && (
               <Text style={[
                 styles.trendBadge,
@@ -321,7 +335,7 @@ export default function Analytics() {
         <View style={[styles.section, styles.safetyTipsSection]}>
           <View style={styles.sectionHeader}>
             <AlertTriangle size={20} color="#FF6B35" />
-            <Text style={styles.sectionTitle}>Safety Tips</Text>
+            <Text style={styles.sectionTitle}>{t('analytics.safetyTips')}</Text>
           </View>
           {analyticsData.safetyTips.length > 0 ? (
             analyticsData.safetyTips.map((tip, index) => (
@@ -337,7 +351,7 @@ export default function Analytics() {
               <View style={styles.tipIconContainer}>
                 <CheckCircle size={16} color="#10B981" />
               </View>
-              <Text style={styles.tipText}>Great job! Keep following safety protocols</Text>
+              <Text style={styles.tipText}>{t('analytics.tips.greatJob')}</Text>
             </View>
           )}
         </View>
@@ -347,7 +361,7 @@ export default function Analytics() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <AlertTriangle size={20} color="#FF6B35" />
-            <Text style={styles.sectionTitle}>Risk Level Distribution</Text>
+            <Text style={styles.sectionTitle}>{t('analytics.riskDistribution')}</Text>
           </View>
           <View style={styles.priorityDistribution}>
             {analyticsData.incidentsByPriority.map((item) => (
@@ -355,7 +369,7 @@ export default function Analytics() {
                 <View style={styles.priorityInfo}>
                   <View style={[styles.priorityDot, { backgroundColor: item.color }]} />
                   <Text style={styles.priorityName}>
-                    {item.priority.charAt(0).toUpperCase() + item.priority.slice(1)}
+                    {getPriorityLabel(item.priority)}
                   </Text>
                 </View>
                 <Text style={[styles.priorityCount, { color: item.color }]}>
@@ -370,7 +384,7 @@ export default function Analytics() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <BarChart3 size={20} color="#FF6B35" />
-            <Text style={styles.sectionTitle}>Incidents by Type</Text>
+            <Text style={styles.sectionTitle}>{t('analytics.incidentsByType')}</Text>
           </View>
 
           <BarChart
@@ -412,18 +426,18 @@ export default function Analytics() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <TrendingUp size={20} color="#FF6B35" />
-            <Text style={styles.sectionTitle}>Incident Trend</Text>
+            <Text style={styles.sectionTitle}>{t('analytics.incidentTrend')}</Text>
           </View>
 
           <LineChart
             data={{
               labels: analyticsData.weeklyTrend.length === 4
-                ? ['Week 1', 'Week 2', 'Week 3', 'Week 4']
+                ? [t('analytics.weekLabels.week1'), t('analytics.weekLabels.week2'), t('analytics.weekLabels.week3'), t('analytics.weekLabels.week4')]
                 : analyticsData.weeklyTrend.length === 13
                   ? ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'W8', 'W9', 'W10', 'W11', 'W12', 'W13']
                   : analyticsData.weeklyTrend.length === 52
                     ? ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8', 'M9', 'M10', 'M11', 'M12']
-                    : ['Week 1', 'Week 2'],
+                    : [t('analytics.weekLabels.week1'), t('analytics.weekLabels.week2')],
               datasets: [{
                 data: analyticsData.weeklyTrend.length > 0
                   ? [...analyticsData.weeklyTrend, Math.max(...analyticsData.weeklyTrend) * 1.1] // Add padding for visibility
