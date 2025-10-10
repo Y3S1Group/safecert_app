@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import FeatureItem from '../../components/FeatureItem';
 import { BookOpen, CheckCircle, Award, Download, AlertTriangle, Camera } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { useOnboarding } from '../_layout';
 
 const { width, height } = Dimensions.get('window');
 
@@ -13,17 +14,23 @@ export default function OnboardingScreens() {
   const pagerRef = useRef<PagerView>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const router = useRouter();
+  const { completeOnboarding } = useOnboarding();
 
-  const goToNextPage = () => {
+  const goToNextPage = async () => {
     if (currentPage < 2) {
       pagerRef.current?.setPage(currentPage + 1);
     } else {
-      router.replace('/');
+      // Mark onboarding as completed and update parent state
+      await completeOnboarding();
+      // Navigate to auth screen
+      router.replace('/(auth)/authScreen');
     }
   };
 
-  const skipOnboarding = () => {
-    router.replace('/');
+  const skipOnboarding = async () => {
+    // Mark onboarding as completed and update parent state
+    await completeOnboarding();
+    router.replace('/(auth)/authScreen');
   };
 
   return (
