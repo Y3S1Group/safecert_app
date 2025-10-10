@@ -5,17 +5,21 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '@/config/firebaseConfig';
 import { Course, Subtopic } from '@/types/course';
-import { BookOpen, FileText, ArrowLeft, Play, X, Download, CheckCircle } from 'lucide-react-native';
+import { BookOpen, FileText, ArrowLeft, Play, X, Download, CheckCircle, Volume2, VolumeX } from 'lucide-react-native';
 import { WebView } from 'react-native-webview';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { Linking } from 'react-native';
 import { getViewablePDFUrl } from '@/config/cloudinaryConfig';
 import { generateQuizFromPDF } from '@/config/geminiConfig';
+import * as Speech from 'expo-speech'; // New
+import { useLanguage } from '@/providers/languageContext'; // New
 
 export default function CourseDetail() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const { language } = useLanguage(); // New
+  console.log('🎤 Current TTS Language:', language); // To Check
 
   const [course, setCourse] = useState<Course | null>(null);
   const [subtopics, setSubtopics] = useState<Subtopic[]>([]);
@@ -30,6 +34,73 @@ export default function CourseDetail() {
 
   const [userProgress, setUserProgress] = useState<number[]>([]);
   const [progressPercentage, setProgressPercentage] = useState(0);
+
+  // Dynamic Translation - New
+  const [translatedCourse, setTranslatedCourse] = useState<{
+    title: string;
+    description: string;
+  } | null>(null);
+
+  const [translatedSubtopics, setTranslatedSubtopics] = useState<{
+    [key: number]: { title: string; description?: string }
+  }>({});
+
+  const [isTranslating, setIsTranslating] = useState(false);
+
+  // TTS State - New
+  const [speakingItem, setSpeakingItem] = useState<string | null>(null);
+
+  // TTS Functions - New
+  const speakText = (id: string, text: string) => {
+    console.log('🔊 Speaking with language:', language);
+    if (speakingItem === id) {
+      Speech.stop();
+      setSpeakingItem(null);
+      return;
+    }
+
+    Speech.stop();
+    setSpeakingItem(id);
+
+    const languageCode = 
+      language === 'si' ? 'si-LK' :
+      language === 'ta' ? 'ta-IN' : 'en-US';
+
+    Speech.speak(text, {
+      language: languageCode,
+      pitch: 1.0,
+      rate: 0.9,
+      onDone: () => setSpeakingItem(null),
+      onStopped: () => setSpeakingItem(null),
+      onError: () => {
+        setSpeakingItem(null);
+        Alert.alert('Error', 'Text-to-speech failed');
+      }
+    });
+  };
+
+  // Updated
+  const speakCourseInfo = () => {
+    if (!course) return;
+    const title = translatedCourse?.title || course.title;
+    const desc = translatedCourse?.description || course.description;
+    const text = `${title}. ${desc}`;
+    speakText('course-info', text);
+  };
+
+  // Updated
+  const speakSubtopic = (index: number, title: string, description?: string) => {
+    const translatedTitle = translatedSubtopics[index]?.title || title;
+    const translatedDesc = translatedSubtopics[index]?.description || description;
+    const text = translatedDesc ? `${translatedTitle}. ${translatedDesc}` : translatedTitle;
+    speakText(`subtopic-${index}`, text);
+  };
+
+  useEffect(() => {
+    return () => {
+      Speech.stop();
+    };
+  }, []);
 
   useEffect(() => {
     const fetchCourse = async () => {
@@ -184,6 +255,8 @@ export default function CourseDetail() {
     );
   }
 
+  const isSpeakingCourse = speakingItem === 'course-info';
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView 
@@ -211,6 +284,21 @@ export default function CourseDetail() {
           </View>
           <Text style={styles.description}>{course.description}</Text>
           
+          {/* TTS Button for Course Info - NEW */}
+          <TouchableOpacity 
+            style={styles.ttsButton}
+            onPress={speakCourseInfo}
+          >
+            {isSpeakingCourse ? (
+              <VolumeX size={16} color="#FF6B35" />
+            ) : (
+              <Volume2 size={16} color="#6B7280" />
+            )}
+            <Text style={[styles.ttsButtonText, isSpeakingCourse && styles.ttsButtonTextActive]}>
+              {isSpeakingCourse ? 'Stop Reading' : 'Read Course Info'}
+            </Text>
+          </TouchableOpacity>
+
           {/* Progress Bar */}
           <View style={styles.progressSection}>
             <View style={styles.progressHeader}>
@@ -245,6 +333,7 @@ export default function CourseDetail() {
         ) : (
           subtopics.map((sub, index) => {
             const isCompleted = userProgress.includes(index);
+            const isSpeakingSubtopic = speakingItem === `subtopic-${index}`;
             
             return (
               <View key={index} style={styles.subtopicCard}>
@@ -262,6 +351,21 @@ export default function CourseDetail() {
                 {sub.description && (
                   <Text style={styles.subDesc}>{sub.description}</Text>
                 )}
+
+                {/* TTS Button for Subtopic - NEW */}
+                <TouchableOpacity 
+                  style={styles.ttsButtonSmall}
+                  onPress={() => speakSubtopic(index, sub.title, sub.description)}
+                >
+                  {isSpeakingSubtopic ? (
+                    <VolumeX size={14} color="#FF6B35" />
+                  ) : (
+                    <Volume2 size={14} color="#6B7280" />
+                  )}
+                  <Text style={[styles.ttsButtonTextSmall, isSpeakingSubtopic && styles.ttsButtonTextActive]}>
+                    {isSpeakingSubtopic ? 'Stop' : 'Listen'}
+                  </Text>
+                </TouchableOpacity>
 
                 {/* PDFs */}
                 {sub.pdfs && Object.keys(sub.pdfs).some(key => sub.pdfs[key as keyof typeof sub.pdfs]) && (
@@ -530,7 +634,47 @@ const styles = StyleSheet.create({
     color: '#4B5563', 
     fontSize: 15, 
     lineHeight: 22,
+    marginBottom: 12,
+  },
+  ttsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F9FAFB',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    gap: 8,
     marginBottom: 16,
+  },
+  ttsButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  ttsButtonTextActive: {
+    color: '#FF6B35',
+  },
+  ttsButtonSmall: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F9FAFB',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    gap: 6,
+    marginBottom: 12,
+    alignSelf: 'flex-start',
+  },
+  ttsButtonTextSmall: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6B7280',
   },
   progressSection: {
     paddingTop: 16,
