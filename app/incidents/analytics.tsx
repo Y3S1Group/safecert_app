@@ -1,12 +1,11 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native'
 import React, { useState, useEffect } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { ChevronLeft, TrendingUp, AlertTriangle, Clock, CheckCircle, Activity, BarChart3, PieChartIcon, MapPin } from 'lucide-react-native'
+import { ChevronLeft, ChevronRight, TrendingUp, AlertTriangle, Clock, CheckCircle, Activity, BarChart3, Calendar } from 'lucide-react-native'
 import { collection, query, where, getDocs } from 'firebase/firestore'
 import { auth, db } from '@/config/firebaseConfig'
 import { useRouter } from 'expo-router'
-import { LineChart, BarChart, PieChart, ProgressChart } from 'react-native-chart-kit'
-import { Svg } from 'react-native-svg'
+import { LineChart, BarChart } from 'react-native-chart-kit'
 
 const { width } = Dimensions.get('window')
 
@@ -15,7 +14,8 @@ interface AnalyticsData {
   criticalIncidents: number;
   incidentsByPriority: { priority: string; count: number; color: string }[];
   incidentsByType: { type: string; count: number; percentage: number }[];
-  weeklyTrend: number[];
+  trendData: number[];
+  trendLabels: string[];
   safetyTips: string[];
   trendIndicators: {
     incidentChange: number;
@@ -23,70 +23,173 @@ interface AnalyticsData {
   };
 }
 
+type TrendView = 'weekly' | 'monthly'
+
 export default function Analytics() {
   const router = useRouter()
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d' | '1y'>('7d')
+  const [initialLoading, setInitialLoading] = useState(true)
+  const [statsTimeRange, setStatsTimeRange] = useState<'7d' | '30d' | '90d' | '1y'>('30d')
+  const [trendView, setTrendView] = useState<TrendView>('weekly')
+  const [trendOffset, setTrendOffset] = useState(0) // For navigating through time periods
 
   useEffect(() => {
     fetchAnalyticsData()
-  }, [timeRange])
+  }, [statsTimeRange, trendView, trendOffset])
 
   const fetchAnalyticsData = async () => {
     if (!auth.currentUser) return
 
     try {
-      setLoading(true)
+      if (initialLoading) {
+        setInitialLoading(true)
+      }
 
       const now = new Date()
-      const daysBack = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : timeRange === '90d' ? 90 : 365
+      const daysBack = statsTimeRange === '7d' ? 7 : statsTimeRange === '30d' ? 30 : statsTimeRange === '90d' ? 90 : 365
       const startDate = new Date(now.getTime() - (daysBack * 24 * 60 * 60 * 1000))
 
-      const q = query(
+      const statsQuery = query(
         collection(db, 'incidents'),
         where('createdAt', '>=', startDate)
       )
 
-      const querySnapshot = await getDocs(q)
-      const incidents: any[] = []
+      const statsSnapshot = await getDocs(statsQuery)
+      const statsIncidents: any[] = []
 
-      querySnapshot.forEach((doc) => {
-        incidents.push({ id: doc.id, ...doc.data() })
+      statsSnapshot.forEach((doc) => {
+        statsIncidents.push({ id: doc.id, ...doc.data() })
       })
 
+      const allIncidentsQuery = query(collection(db, 'incidents'))
+      const allIncidentsSnapshot = await getDocs(allIncidentsQuery)
+      const allIncidents: any[] = []
+      
+      allIncidentsSnapshot.forEach((doc) => {
+        allIncidents.push({ id: doc.id, ...doc.data() })
+      })
+      const trendResult = trendView === 'weekly' 
+        ? calculateWeeklyTrendByMonth(allIncidents, trendOffset)
+        : calculateMonthlyTrend(allIncidents, trendOffset)
       const analytics: AnalyticsData = {
-        totalIncidents: incidents.length,
-        criticalIncidents: incidents.filter(i => i.priority === 'critical').length,
-        incidentsByPriority: processIncidentsByPriority(incidents),
-        incidentsByType: processIncidentsByType(incidents),
-        weeklyTrend: calculateWeeklyTrend(incidents, daysBack),
-        safetyTips: generateSafetyTips(incidents, {
-          incidentsByPriority: processIncidentsByPriority(incidents),
-          criticalIncidents: incidents.filter(i => i.priority === 'critical').length
-        }),
-        trendIndicators: await calculateTrendIndicators(incidents, daysBack)
+        totalIncidents: statsIncidents.length,
+        criticalIncidents: statsIncidents.filter(i => i.priority === 'critical').length,
+        incidentsByPriority: processIncidentsByPriority(statsIncidents),
+        incidentsByType: processIncidentsByType(statsIncidents),
+        trendData: trendResult.data,
+        trendLabels: trendResult.labels,
+        safetyTips: [],
+        trendIndicators: await calculateTrendIndicators(statsIncidents, daysBack)
       }
-
-      // Generate safety tips based on all analytics
-      analytics.safetyTips = generateSafetyTips(incidents, analytics)
-
+      
       setAnalyticsData(analytics)
-
     } catch (error) {
       console.error('Error fetching analytics:', error)
     } finally {
-      setLoading(false)
+      if (initialLoading) {
+        setInitialLoading(false)
+      }
+    }
+  }
+
+  const calculateWeeklyTrendByMonth = (incidents: any[], offset: number = 0) => {
+    const now = new Date()
+    const currentMonth = new Date(now.getFullYear(), now.getMonth() - offset, 1)
+    const nextMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1)
+    
+    // Get all weeks in this month
+    const weeks: { start: Date; end: Date; label: string }[] = []
+    let weekCounter = 1
+    
+    let currentDate = new Date(currentMonth)
+    
+    while (currentDate < nextMonth) {
+      const weekStart = new Date(currentDate)
+      const weekEnd = new Date(currentDate)
+      weekEnd.setDate(weekEnd.getDate() + 6)
+
+      if (weekEnd >= nextMonth) {
+        weekEnd.setTime(nextMonth.getTime() - 1)
+      }
+
+      weeks.push({
+        start: new Date(weekStart),
+        end: new Date(weekEnd),
+        label: `W${weekCounter}`
+      })
+
+      weekCounter++
+      currentDate.setDate(currentDate.getDate() + 7)
+    }
+
+    const weeklyData = Array(weeks.length).fill(0)
+    
+    incidents.forEach(incident => {
+      if (incident.createdAt?.toDate) {
+        const incidentDate = incident.createdAt.toDate()
+        
+        weeks.forEach((week, index) => {
+          if (incidentDate >= week.start && incidentDate <= week.end) {
+            weeklyData[index]++
+          }
+        })
+      }
+    })
+    return {
+      data: weeklyData,
+      labels: weeks.map(w => w.label)
+    }
+  }
+
+  const calculateMonthlyTrend = (incidents: any[], offset: number = 0) => {
+    const now = new Date()
+    const monthsToShow = 6
+    const monthlyData = Array(monthsToShow).fill(0)
+    const labels: string[] = []
+    incidents.forEach(incident => {
+      if (incident.createdAt?.toDate) {
+        const incidentDate = incident.createdAt.toDate()
+        const currentDate = new Date(now)
+        
+        currentDate.setMonth(currentDate.getMonth() - offset)
+        
+        const monthsDiff = (currentDate.getFullYear() - incidentDate.getFullYear()) * 12 + 
+                          (currentDate.getMonth() - incidentDate.getMonth())
+        
+        if (monthsDiff >= 0 && monthsDiff < monthsToShow) {
+          monthlyData[monthsToShow - 1 - monthsDiff]++
+        }
+      }
+    })
+    for (let i = monthsToShow - 1; i >= 0; i--) {
+      const monthDate = new Date(now)
+      monthDate.setMonth(monthDate.getMonth() - i - offset)
+      labels.push(monthDate.toLocaleString('default', { month: 'short' }))
+    }
+    return { data: monthlyData, labels }
+  }
+
+  const getWeekNumber = (date: Date) => {
+    const firstDayOfYear = new Date(date.getFullYear(), 0, 1)
+    const pastDaysOfYear = (date.getTime() - firstDayOfYear.getTime()) / 86400000
+    return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7)
+  }
+  const getCurrentPeriodLabel = () => {
+    const now = new Date()
+    const displayDate = new Date(now.getFullYear(), now.getMonth() - trendOffset, 1)
+    
+    if (trendView === 'weekly') {
+      return displayDate.toLocaleString('default', { month: 'long', year: 'numeric' })
+    } else {
+      return displayDate.toLocaleString('default', { month: 'long', year: 'numeric' })
     }
   }
 
   const processIncidentsByType = (incidents: any[]) => {
     const typeCount: { [key: string]: number } = {}
-
     incidents.forEach(incident => {
       typeCount[incident.incidentType] = (typeCount[incident.incidentType] || 0) + 1
     })
-
     const total = incidents.length || 1
     return Object.entries(typeCount)
       .map(([type, count]) => ({
@@ -96,7 +199,6 @@ export default function Analytics() {
       }))
       .sort((a, b) => b.count - a.count)
   }
-
   const processIncidentsByPriority = (incidents: any[]) => {
     const priorityCount: { [key: string]: number } = {
       low: 0,
@@ -104,13 +206,11 @@ export default function Analytics() {
       high: 0,
       critical: 0
     }
-
     incidents.forEach(incident => {
       if (priorityCount.hasOwnProperty(incident.priority)) {
         priorityCount[incident.priority]++
       }
     })
-
     return Object.entries(priorityCount).map(([priority, count]) => ({
       priority,
       count,
@@ -118,79 +218,26 @@ export default function Analytics() {
     }))
   }
 
-  const calculateWeeklyTrend = (incidents: any[], daysBack: number) => {
-    const weeks = Math.ceil(daysBack / 7)
-    const weeklyData = Array(Math.min(weeks, 4)).fill(0)
-
-    incidents.forEach(incident => {
-      if (incident.createdAt?.toDate) {
-        const daysAgo = Math.floor((Date.now() - incident.createdAt.toDate()) / (1000 * 60 * 60 * 24))
-        const weekIndex = Math.floor(daysAgo / 7)
-        if (weekIndex < weeklyData.length) {
-          weeklyData[weeklyData.length - 1 - weekIndex]++
-        }
-      }
-    })
-
-    return weeklyData
-  }
-
-  const generateSafetyTips = (incidents: any[], analytics: any) => {
-    const tips: string[] = []
-
-    // Tip based on critical incidents
-    if (analytics.criticalIncidents > 0) {
-      tips.push(`${analytics.criticalIncidents} critical incidents this period - Review emergency procedures with your team`)
-    }
-
-    // Tip based on priority distribution
-    const criticalCount = analytics.incidentsByPriority.find((p: any) => p.priority === 'critical')?.count || 0
-    const highCount = analytics.incidentsByPriority.find((p: any) => p.priority === 'high')?.count || 0
-
-    if (criticalCount > 0 || highCount > 3) {
-      tips.push('High-risk incidents detected - Ensure all safety equipment is functional and accessible')
-    }
-
-    // Generic safety reminder
-    if (incidents.length > 10) {
-      tips.push('Multiple incidents reported - Conduct a safety audit and refresher training for all staff')
-    } else if (incidents.length > 0) {
-      tips.push('Stay alert and report any unsafe conditions immediately to prevent future incidents')
-    } else {
-      tips.push('Great job! Keep following safety protocols and maintain vigilance')
-    }
-
-    return tips.slice(0, 3)
-  }
-
   const calculateTrendIndicators = async (currentIncidents: any[], daysBack: number) => {
     try {
-      // Get previous period data
       const prevStartDate = new Date(Date.now() - (daysBack * 2 * 24 * 60 * 60 * 1000))
       const prevEndDate = new Date(Date.now() - (daysBack * 24 * 60 * 60 * 1000))
-
       const prevQuery = query(
         collection(db, 'incidents'),
         where('createdAt', '>=', prevStartDate),
         where('createdAt', '<', prevEndDate)
       )
-
       const prevSnapshot = await getDocs(prevQuery)
       const prevIncidents: any[] = []
       prevSnapshot.forEach((doc) => {
         prevIncidents.push({ id: doc.id, ...doc.data() })
       })
-
       const prevTotal = prevIncidents.length
       const prevCritical = prevIncidents.filter(i => i.priority === 'critical').length
-
       const currentTotal = currentIncidents.length
       const currentCritical = currentIncidents.filter(i => i.priority === 'critical').length
-
-      // Calculate percentage change
       const incidentChange = prevTotal === 0 ? 0 : Math.round(((currentTotal - prevTotal) / prevTotal) * 100)
       const criticalChange = prevCritical === 0 ? 0 : Math.round(((currentCritical - prevCritical) / prevCritical) * 100)
-
       return { incidentChange, criticalChange }
     } catch (error) {
       console.error('Error calculating trends:', error)
@@ -218,7 +265,19 @@ export default function Analytics() {
     }
   }
 
-  if (loading || !analyticsData) {
+  const handleTrendNavigation = (direction: 'left' | 'right') => {
+    if (direction === 'left') {
+      setTrendOffset(prev => prev + 1) // Go to past
+    } else {
+      setTrendOffset(prev => Math.max(0, prev - 1)) // Go to recent (can't go beyond current)
+    }
+  }
+
+  const resetToCurrentPeriod = () => {
+    setTrendOffset(0)
+  }
+
+  if (initialLoading || !analyticsData) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
@@ -232,9 +291,25 @@ export default function Analytics() {
     )
   }
 
+  const chartConfig = {
+    backgroundColor: '#ffffff',
+    backgroundGradientFrom: '#ffffff',
+    backgroundGradientTo: '#ffffff',
+    decimalPlaces: 0,
+    color: (opacity = 1) => `rgba(255, 107, 53, ${opacity})`,
+    labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
+    style: { borderRadius: 16 },
+    propsForLabels: { fontSize: 10 },
+    propsForDots: {
+      r: '4',
+      strokeWidth: '2',
+      stroke: '#FF6B35'
+    }
+  }
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* Fixed Header */}
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
@@ -244,7 +319,7 @@ export default function Analytics() {
         </TouchableOpacity>
         <View style={styles.headerContent}>
           <Text style={styles.headerTitle}>Analytics</Text>
-          <Text style={styles.headerSubtitle}>{getTimeRangeLabel(timeRange)}</Text>
+          <Text style={styles.headerSubtitle}>{getTimeRangeLabel(statsTimeRange)}</Text>
         </View>
         <View style={styles.headerIcon}>
           <TrendingUp size={24} color="#FF6B35" />
@@ -258,11 +333,7 @@ export default function Analytics() {
       >
         {/* Time Range Selector */}
         <View style={styles.timeRangeSection}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.timeRangeContent}
-          >
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.timeRangeContent}>
             {[
               { key: '7d', label: '7 Days' },
               { key: '30d', label: '30 Days' },
@@ -273,13 +344,13 @@ export default function Analytics() {
                 key={range.key}
                 style={[
                   styles.timeRangeButton,
-                  timeRange === range.key && styles.timeRangeButtonActive
+                  statsTimeRange === range.key && styles.timeRangeButtonActive
                 ]}
-                onPress={() => setTimeRange(range.key as any)}
+                onPress={() => setStatsTimeRange(range.key as any)}
               >
                 <Text style={[
                   styles.timeRangeText,
-                  timeRange === range.key && styles.timeRangeTextActive
+                  statsTimeRange === range.key && styles.timeRangeTextActive
                 ]}>
                   {range.label}
                 </Text>
@@ -287,7 +358,6 @@ export default function Analytics() {
             ))}
           </ScrollView>
         </View>
-
         {/* Quick Stats Bar */}
         <View style={styles.statsBar}>
           <View style={styles.statItem}>
@@ -317,33 +387,6 @@ export default function Analytics() {
           </View>
         </View>
 
-        {/* Safety Tips Section */}
-        <View style={[styles.section, styles.safetyTipsSection]}>
-          <View style={styles.sectionHeader}>
-            <AlertTriangle size={20} color="#FF6B35" />
-            <Text style={styles.sectionTitle}>Safety Tips</Text>
-          </View>
-          {analyticsData.safetyTips.length > 0 ? (
-            analyticsData.safetyTips.map((tip, index) => (
-              <View key={index} style={styles.tipCard}>
-                <View style={styles.tipIconContainer}>
-                  <CheckCircle size={16} color="#10B981" />
-                </View>
-                <Text style={styles.tipText}>{tip}</Text>
-              </View>
-            ))
-          ) : (
-            <View style={styles.tipCard}>
-              <View style={styles.tipIconContainer}>
-                <CheckCircle size={16} color="#10B981" />
-              </View>
-              <Text style={styles.tipText}>Great job! Keep following safety protocols</Text>
-            </View>
-          )}
-        </View>
-
-
-        {/* Priority Distribution */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <AlertTriangle size={20} color="#FF6B35" />
@@ -366,7 +409,6 @@ export default function Analytics() {
           </View>
         </View>
 
-        {/* Incidents by Type */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <BarChart3 size={20} color="#FF6B35" />
@@ -409,55 +451,82 @@ export default function Analytics() {
           />
         </View>
 
+        {/* Incident Trend Chart with Navigation */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <TrendingUp size={20} color="#FF6B35" />
             <Text style={styles.sectionTitle}>Incident Trend</Text>
           </View>
-
-          <LineChart
-            data={{
-              labels: analyticsData.weeklyTrend.length === 4
-                ? ['Week 1', 'Week 2', 'Week 3', 'Week 4']
-                : analyticsData.weeklyTrend.length === 13
-                  ? ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'W8', 'W9', 'W10', 'W11', 'W12', 'W13']
-                  : analyticsData.weeklyTrend.length === 52
-                    ? ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8', 'M9', 'M10', 'M11', 'M12']
-                    : ['Week 1', 'Week 2'],
-              datasets: [{
-                data: analyticsData.weeklyTrend.length > 0
-                  ? [...analyticsData.weeklyTrend, Math.max(...analyticsData.weeklyTrend) * 1.1] // Add padding for visibility
-                  : [0, 1]
-              }]
-            }}
-            width={width - 64}
-            height={220}
-            chartConfig={{
-              backgroundColor: '#FF6B35',
-              backgroundGradientFrom: '#FF6B35',
-              backgroundGradientTo: '#F97316',
-              decimalPlaces: 0,
-              color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-              labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-              style: {
-                borderRadius: 16
-              },
-              propsForDots: {
-                r: '6',
-                strokeWidth: '2',
-                stroke: '#FFFFFF'
-              }
-            }}
-            bezier
-            style={{
-              marginVertical: 8,
-              borderRadius: 16
-            }}
-          />
+          {/* Trend View Toggle */}
+          <View style={styles.trendViewToggle}>
+            <TouchableOpacity
+              style={[styles.trendViewButton, trendView === 'weekly' && styles.trendViewButtonActive]}
+              onPress={() => {
+                setTrendView('weekly')
+                setTrendOffset(0)
+              }}
+            >
+              <Text style={[styles.trendViewText, trendView === 'weekly' && styles.trendViewTextActive]}>
+                Weekly
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.trendViewButton, trendView === 'monthly' && styles.trendViewButtonActive]}
+              onPress={() => {
+                setTrendView('monthly')
+                setTrendOffset(0)
+              }}
+            >
+              <Text style={[styles.trendViewText, trendView === 'monthly' && styles.trendViewTextActive]}>
+                Monthly
+              </Text>
+            </TouchableOpacity>
+          </View>
+          {/* Period Navigation */}
+          <View style={styles.periodNavigation}>
+            <TouchableOpacity
+              style={styles.navButton}
+              onPress={() => handleTrendNavigation('left')}
+            >
+              <ChevronLeft size={20} color="#6B7280" />
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.currentPeriod} onPress={resetToCurrentPeriod}>
+              <Calendar size={16} color="#FF6B35" />
+              <Text style={styles.currentPeriodText}>
+                {trendOffset === 0 ? getCurrentPeriodLabel() : getCurrentPeriodLabel()}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.navButton, trendOffset === 0 && styles.navButtonDisabled]}
+              onPress={() => handleTrendNavigation('right')}
+              disabled={trendOffset === 0}
+            >
+              <ChevronRight size={20} color={trendOffset === 0 ? '#D1D5DB' : '#6B7280'} />
+            </TouchableOpacity>
+          </View>
+          {/* Line Chart */}
+          <View style={styles.chartContainer}>
+            <LineChart
+              data={{
+                labels: analyticsData.trendLabels,
+                datasets: [{
+                  data: analyticsData.trendData.length > 0 ? analyticsData.trendData : [0]
+                }]
+              }}
+              width={width - 48}
+              height={220}
+              chartConfig={chartConfig}
+              bezier
+              style={styles.chart}
+              withInnerLines={true}
+              withOuterLines={true}
+              withVerticalLines={false}
+              withHorizontalLines={true}
+              fromZero
+            />
+          </View>
         </View>
-
-        {/* Bottom Spacing */}
-        <View style={{ height: 24 }} />
       </ScrollView>
     </SafeAreaView>
   )
@@ -472,13 +541,13 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 32,
+    padding: 20,
   },
   loadingIconContainer: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#FFF5F2',
+    backgroundColor: '#FEF3E2',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
@@ -487,17 +556,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#111827',
-    marginBottom: 4,
+    marginBottom: 8,
   },
   loadingSubtext: {
     fontSize: 14,
-    color: '#9CA3AF',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 16,
+    color: '#6B7280',
   },
   header: {
     flexDirection: 'row',
@@ -540,27 +603,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 40,
+  },
   timeRangeSection: {
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    marginBottom: 20,
   },
   timeRangeContent: {
-    paddingHorizontal: 16,
     gap: 8,
   },
   timeRangeButton: {
     paddingHorizontal: 20,
     paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: '#F9FAFB',
-    borderWidth: 2,
-    borderColor: '#F3F4F6',
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
   },
   timeRangeButtonActive: {
     backgroundColor: '#FF6B35',
-    borderColor: '#FF6B35',
   },
   timeRangeText: {
     fontSize: 14,
@@ -573,40 +636,130 @@ const styles = StyleSheet.create({
   statsBar: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   statItem: {
     flex: 1,
     alignItems: 'center',
   },
   statValue: {
-    fontSize: 24,
-    fontWeight: '700',
+    fontSize: 32,
+    fontWeight: '800',
     color: '#111827',
     marginBottom: 4,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#6B7280',
-    fontWeight: '500',
+    marginBottom: 8,
   },
   trendBadge: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
-    marginTop: 4,
   },
   statDivider: {
     width: 1,
     backgroundColor: '#E5E7EB',
-    marginHorizontal: 8,
+    marginHorizontal: 16,
+  },
+  section: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 8,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  trendViewToggle: {
+    flexDirection: 'row',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 16,
+  },
+  trendViewButton: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  trendViewButtonActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  trendViewText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  trendViewTextActive: {
+    color: '#FF6B35',
+  },
+  periodNavigation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  navButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  navButtonDisabled: {
+    opacity: 0.5,
+  },
+  currentPeriod: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#FEF3E2',
+    borderRadius: 20,
+    marginHorizontal: 12,
+  },
+  currentPeriodText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FF6B35',
+  },
+  chartContainer: {
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  chart: {
+    borderRadius: 16,
   },
   safetyTipsSection: {
     backgroundColor: '#FFFBEB',
@@ -668,28 +821,5 @@ const styles = StyleSheet.create({
   priorityCount: {
     fontSize: 18,
     fontWeight: '700',
-  },
-  section: {
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 16,
-    marginTop: 12,
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    gap: 8,
-  },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#111827',
   },
 })

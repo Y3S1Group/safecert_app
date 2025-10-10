@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router'
 import { auth, db } from '@/config/firebaseConfig';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { Bell, Building, CheckCircle, ChevronRight, HelpCircle, HelpCircleIcon, LockIcon, LogOut, LogOutIcon, Mail, Phone, Shield, User } from 'lucide-react-native';
+import { ArrowLeftRight, Bell, Building, CheckCircle, ChevronRight, HelpCircle, HelpCircleIcon, LockIcon, LogOut, LogOutIcon, Mail, Phone, Shield, User } from 'lucide-react-native';
 import CustomModal from '@/components/CustomModal';
 import EditProfileForm from '@/components/EditProfileForm';
 import { ActivityIndicator } from 'react-native-paper';
@@ -184,20 +184,26 @@ export default function profile() {
   };
 
   const handleSwitchToInstructor = () => {
-    Alert.alert(
-      'Switch Account',
-      'Are you sure you want to switch to your Teacher account?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Switch', 
-          onPress: () => {
-            // Logic to switch accounts here
-            router.replace('/instructor/instructorDash'); // example path
-          } 
+    showAlert({
+      message: 'Are you sure you want to switch to your Teacher account?',
+      icon: ArrowLeftRight,
+      iconColor: '#FF6B35',
+      iconBgColor: '#FEE2E2',
+      buttons: [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+          onPress: () => console.log('Cancelled')
         },
+        {
+          text: 'Switch',
+          style: 'default',
+          onPress: () => {
+              router.replace('/instructor/instructorDash');
+          }
+        }
       ]
-    );
+    })
   };
 
   const handleNotifications = () => {

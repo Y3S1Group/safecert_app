@@ -102,12 +102,8 @@ export default function Reports() {
                       iconColor: '#10B981',
                       iconBgColor: '#D1FAE5',
                       autoClose: true,
-                      autoCloseDelay: 2000
+                      autoCloseDelay: 1500
                     })
-              
-                    setTimeout(() => {
-                      router.back()
-                    }, 2000)
             } catch (error) {
               console.error('Error deleting incident:', error)
               showSnackbar({
