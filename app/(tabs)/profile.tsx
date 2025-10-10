@@ -4,13 +4,15 @@ import { useRouter } from 'expo-router'
 import { auth, db } from '@/config/firebaseConfig';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { ArrowLeftRight, Bell, Building, CheckCircle, ChevronRight, HelpCircle, HelpCircleIcon, LockIcon, LogOut, LogOutIcon, Mail, Phone, Shield, User } from 'lucide-react-native';
+import { ArrowLeftRight, Bell, Building, CheckCircle, ChevronRight, HelpCircle, HelpCircleIcon, LockIcon, LogOut, LogOutIcon, Mail, Phone, Shield, User, Languages } from 'lucide-react-native';
 import CustomModal from '@/components/CustomModal';
 import EditProfileForm from '@/components/EditProfileForm';
 import { ActivityIndicator } from 'react-native-paper';
 import CustomeAlert from '@/components/CustomeAlert';
 import { useAlert } from '@/contexts/AlertContext';
 import { useSnackbar } from '@/contexts/SnackbarContext';
+import { useLanguage } from '@/providers/languageContext'; // New
+import LanguageSwitcher from '@/components/LanguageSwitcher'; // New
 
 interface UserInfo {
   name: string;
@@ -23,9 +25,11 @@ interface UserInfo {
 
 export default function profile() {
   const router = useRouter();
+  const { t } = useLanguage(); // New
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
+  const [languageModalVisible, setLanguageModalVisible] = useState(false); // New
   const [editForm, setEditForm] = useState({
     name: '',
     phone: '',
@@ -54,11 +58,11 @@ export default function profile() {
       if (userDoc.exists()) {
         const userData = userDoc.data();
         const userInfoData = {
-          name: userData.name || 'User',
+          name: userData.name || t('profile.name'),
           email: email,
-          phone: userData.phone || 'Not provided',
-          department: userData.department || 'Not assigned',
-          jobTitle: userData.jobTitle || 'Employee',
+          phone: userData.phone || t('common.notProvided'),
+          department: userData.department || t('common.notAssigned'),
+          jobTitle: userData.jobTitle || t('profile.employee'),
           uid: uid
         };
         setUserInfo(userInfoData);
@@ -70,11 +74,11 @@ export default function profile() {
         });
       } else {
         const defaultUserInfo = {
-          name: 'User',
+          name: t('profile.name'),
           email: email,
-          phone: 'Not provided',
-          department: 'Not assigned',
-          jobTitle: 'Employee',
+          phone: t('common.notProvided'),
+          department: t('common.notAssigned'),
+          jobTitle: t('profile.employee'),
           uid: uid
         };
         setUserInfo(defaultUserInfo);
@@ -88,7 +92,7 @@ export default function profile() {
     } catch (error) {
       console.error('Error fetching user data:', error);
       showSnackbar({
-        message: 'Failed to load user data',
+        message: t('common.errorLoadingData'),
         type: 'error'
       })
     } finally {
@@ -102,18 +106,18 @@ export default function profile() {
 
   const handleLogout = async () => {
     showAlert({
-      message: 'Are you sure you want to log out?',
+      message: t('profile.logoutConfirm'),
       icon: LogOutIcon,
       iconColor: '#FF6B35',
       iconBgColor: '#FEE2E2',
       buttons: [
         {
-          text: 'Cancel',
+          text: t('common.cancel'),
           style: 'cancel',
           onPress: () => console.log('Cancelled')
         },
         {
-          text: 'Log Out',
+          text: t('auth.logout'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -155,7 +159,7 @@ export default function profile() {
       } : null);
       setModalVisible(false);
       showAlert({
-        message: 'Profile updated successfully',
+        message: t('profile.updateSuccess'),
         icon: CheckCircle,
         iconColor: '#10B981',
         iconBgColor: '#D1FAE5',
@@ -165,7 +169,7 @@ export default function profile() {
     } catch (error) {
       console.error('Error updating profile:', error);
       showSnackbar({
-        message: 'Failed to update profile',
+        message: t('profile.updateError'),
         type: 'error'
       })
     }
@@ -185,18 +189,18 @@ export default function profile() {
 
   const handleSwitchToInstructor = () => {
     showAlert({
-      message: 'Are you sure you want to switch to your Teacher account?',
+      message: t('profile.switchConfirm'),
       icon: ArrowLeftRight,
       iconColor: '#FF6B35',
       iconBgColor: '#FEE2E2',
       buttons: [
         {
-          text: 'Cancel',
+          text: t('common.cancel'),
           style: 'cancel',
           onPress: () => console.log('Cancelled')
         },
         {
-          text: 'Switch',
+          text: t('profile.switch'),
           style: 'default',
           onPress: () => {
               router.replace('/instructor/instructorDash');
@@ -208,7 +212,7 @@ export default function profile() {
 
   const handleNotifications = () => {
     showAlert({
-      message: 'Notification settings coming soon! Stay tuned for updates.',
+      message: t('profile.notificationsComingSoon'),
       icon: Bell,
       iconColor: '#FF6B35',
       iconBgColor: '#eeefeeff',
@@ -216,9 +220,10 @@ export default function profile() {
       autoCloseDelay: 1200
     })
   };
+  
   const handlePrivacySecurity = () => {
     showAlert({
-      message: 'Privacy & Security settings coming soon!',
+      message: t('profile.privacyComingSoon'),
       icon: LockIcon,
       iconColor: '#FF6B35',
       iconBgColor: '#eeefeeff',
@@ -226,9 +231,10 @@ export default function profile() {
       autoCloseDelay: 1200
     })
   };
+  
   const handleHelpSupport = () => {
     showAlert({
-      message: 'Help & Support center coming soon!',
+      message: t('profile.helpComingSoon'),
       icon: HelpCircleIcon,
       iconColor: '#FF6B35',
       iconBgColor: '#eeefeeff',
@@ -237,6 +243,9 @@ export default function profile() {
     })
   };
 
+  const handleLanguageSettings = () => {
+    setLanguageModalVisible(true);
+  };
 
   if (loading) {
     return (
@@ -249,7 +258,7 @@ export default function profile() {
   if (!userInfo) {
     return (
       <View style={[styles.container, styles.centerContent]}>
-        <Text style={styles.errorText}>Unable to load profile</Text>
+        <Text style={styles.errorText}>{t('profile.unableToLoad')}</Text>
       </View>
     );
   }
@@ -269,17 +278,18 @@ export default function profile() {
           </View>
         </View>
         <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
-          <Text style={styles.editButtonText}>Edit Profile</Text>
+          <Text style={styles.editButtonText}>{t('profile.editProfile')}</Text>
         </TouchableOpacity>
       </View>
+
       {/* Personal Information */}
       <View style={styles.sectionCard}>
-        <Text style={styles.sectionTitle}>Personal Information</Text>
+        <Text style={styles.sectionTitle}>{t('profile.personalInfo')}</Text>
         <View style={styles.infoList}>
           <View style={styles.infoItem}>
             <User size={20} color="#6B7280" />
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Full Name</Text>
+              <Text style={styles.infoLabel}>{t('profile.fullName')}</Text>
               <Text style={styles.infoValue}>{userInfo.name}</Text>
             </View>
           </View>
@@ -287,7 +297,7 @@ export default function profile() {
           <View style={styles.infoItem}>
             <Mail size={20} color="#6B7280" />
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Email</Text>
+              <Text style={styles.infoLabel}>{t('profile.email')}</Text>
               <Text style={styles.infoValue}>{userInfo.email}</Text>
             </View>
           </View>
@@ -295,7 +305,7 @@ export default function profile() {
           <View style={styles.infoItem}>
             <Phone size={20} color="#6B7280" />
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Phone</Text>
+              <Text style={styles.infoLabel}>{t('profile.phone')}</Text>
               <Text style={styles.infoValue}>{userInfo.phone}</Text>
             </View>
           </View>
@@ -303,28 +313,41 @@ export default function profile() {
           <View style={styles.infoItem}>
             <Building size={20} color="#6B7280" />
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Department</Text>
+              <Text style={styles.infoLabel}>{t('profile.department')}</Text>
               <Text style={styles.infoValue}>{userInfo.department}</Text>
             </View>
           </View>
         </View>
       </View>
+
       {/* Settings */}
       <View style={styles.sectionCard}>
-        <Text style={styles.sectionTitle}>Settings</Text>
-          <TouchableOpacity style={styles.settingItem} onPress={handleSwitchToInstructor}>
-            <View style={styles.settingLeft}>
-              <Building size={20} color="#6B7280" />
-              <Text style={styles.settingText}>Switch to Instructor Account</Text>
-            </View>
-            <ChevronRight size={20} color="#9CA3AF" />
-          </TouchableOpacity>
-          <View style={styles.divider} />
+        <Text style={styles.sectionTitle}>{t('profile.settings')}</Text>
+        
+        {/* Language Setting - NEW */}
+        <TouchableOpacity style={styles.settingItem} onPress={handleLanguageSettings}>
+          <View style={styles.settingLeft}>
+            <Languages size={20} color="#6B7280" />
+            <Text style={styles.settingText}>{t('profile.changeLanguage')}</Text>
+          </View>
+          <ChevronRight size={20} color="#9CA3AF" />
+        </TouchableOpacity>
+        <View style={styles.divider} />
+
+        <TouchableOpacity style={styles.settingItem} onPress={handleSwitchToInstructor}>
+          <View style={styles.settingLeft}>
+            <Building size={20} color="#6B7280" />
+            <Text style={styles.settingText}>{t('profile.switchToInstructor')}</Text>
+          </View>
+          <ChevronRight size={20} color="#9CA3AF" />
+        </TouchableOpacity>
+        <View style={styles.divider} />
+
         <View style={styles.settingsList}>
           <TouchableOpacity style={styles.settingItem} onPress={handleNotifications}>
             <View style={styles.settingLeft}>
               <Bell size={20} color="#6B7280" />
-              <Text style={styles.settingText}>Notifications</Text>
+              <Text style={styles.settingText}>{t('profile.notifications')}</Text>
             </View>
             <ChevronRight size={20} color="#9CA3AF" />
           </TouchableOpacity>
@@ -332,7 +355,7 @@ export default function profile() {
           <TouchableOpacity style={styles.settingItem} onPress={handlePrivacySecurity}>
             <View style={styles.settingLeft}>
               <Shield size={20} color="#6B7280" />
-              <Text style={styles.settingText}>Privacy & Security</Text>
+              <Text style={styles.settingText}>{t('profile.privacy')}</Text>
             </View>
             <ChevronRight size={20} color="#9CA3AF" />
           </TouchableOpacity>
@@ -340,40 +363,60 @@ export default function profile() {
           <TouchableOpacity style={styles.settingItem} onPress={handleHelpSupport}>
             <View style={styles.settingLeft}>
               <HelpCircle size={20} color="#6B7280" />
-              <Text style={styles.settingText}>Help & Support</Text>
+              <Text style={styles.settingText}>{t('profile.helpSupport')}</Text>
             </View>
             <ChevronRight size={20} color="#9CA3AF" />
           </TouchableOpacity>
           <View style={styles.divider} />
           <TouchableOpacity style={styles.logoutItem} onPress={handleLogout}>
             <LogOut size={20} color="#B03A2E" />
-            <Text style={styles.logoutText}>Log Out</Text>
+            <Text style={styles.logoutText}>{t('auth.logout')}</Text>
           </TouchableOpacity>
         </View>
       </View>
+
       {/* Footer */}
       <View style={styles.footer}>
-        <Text style={styles.footerText}>Safety App v1.0.0</Text>
-        <Text style={styles.footerText}>© 2025 Safety First Inc.</Text>
+        <Text style={styles.footerText}>{t('profile.appVersion')}</Text>
+        <Text style={styles.footerText}>{t('profile.copyright')}</Text>
       </View>
     </ScrollView>
+
+    {/* Edit Profile Modal */}
     <CustomModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
-        title="Edit Profile"
+        title={t('profile.editProfile')}
         onSave={handleSaveProfile}
         onCancel={handleCancelEdit}
-        saveButtonText="Save"
-        cancelButtonText="Cancel"
+        saveButtonText={t('common.save')}
+        cancelButtonText={t('common.cancel')}
       >
         <EditProfileForm 
           formData={editForm}
           onFormChange={handleFormChange}
         />
     </CustomModal>
+
+    {/* Language Switcher Modal - NEW */}
+    <CustomModal
+        visible={languageModalVisible}
+        onClose={() => setLanguageModalVisible(false)}
+        title={t('profile.changeLanguage')}
+        hideButtons={true}
+      >
+        <LanguageSwitcher />
+        <TouchableOpacity 
+          style={styles.closeLanguageButton} 
+          onPress={() => setLanguageModalVisible(false)}
+        >
+          <Text style={styles.closeLanguageButtonText}>{t('common.done')}</Text>
+        </TouchableOpacity>
+    </CustomModal>
     </>
   );
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -530,5 +573,17 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 12,
     color: '#6B7280',
+  },
+  closeLanguageButton: {
+    backgroundColor: '#FF6B35',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  closeLanguageButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });

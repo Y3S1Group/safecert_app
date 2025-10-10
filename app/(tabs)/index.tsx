@@ -18,6 +18,7 @@ import {
 } from 'lucide-react-native'
 import { auth, db } from '@/config/firebaseConfig'
 import { onAuthStateChanged } from 'firebase/auth'
+import { useLanguage } from '@/providers/languageContext' // Added
 import { doc, getDoc, collection, arrayUnion, query, where, onSnapshot, getDocs, updateDoc } from 'firebase/firestore'
 import { getAIRecommendations } from '@/config/recommendationService'
 import { useAlert } from '@/contexts/AlertContext'
@@ -76,7 +77,10 @@ interface Recommendation {
 
 export default function Home() {
   const router = useRouter();
+  const { t } = useLanguage(); // Added
+
   const { showAlert } = useAlert();
+
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [stats, setStats] = useState<DashboardStats>({
     completedTrainings: 0,
@@ -151,6 +155,7 @@ export default function Home() {
     });
     return () => unsubscribe();
   }, []);
+
 
   useEffect(() => {
     setTipOfTheDay(getTipOfTheDay());
@@ -278,8 +283,8 @@ export default function Home() {
       if (userDoc.exists()) {
         const userData = userDoc.data();
         setUserInfo({
-          name: userData.name || 'User',
-          department: userData.department || 'Not assigned'
+          name: userData.name || t('common.user'),
+          department: userData.department || t('common.notAssigned')
         });
         setEnrolledCourseIds(userData.courses || []);
       }
@@ -363,44 +368,44 @@ export default function Home() {
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 3) return 'Welcome';
-    if (hour < 12) return 'Good morning';
-    if (hour < 16) return 'Good afternoon';
-    return 'Good evening';
+    if (hour < 3) return t('home.greetings.welcome');
+    if (hour < 12) return t('home.greetings.morning');
+    if (hour < 16) return t('home.greetings.afternoon');
+    return t('home.greetings.evening');
   };
 
   const quickActions = [
     {
       id: 'training',
-      title: 'Start Training',
-      subtitle: 'Continue learning',
+      title: t('home.quickActions.startTraining'),
+      subtitle: t('home.quickActions.continueLearn'),
       icon: BookOpen,
       color: '#FF6B35',
       bgColor: 'rgba(255, 107, 53, 0.1)',
       onPress: () => router.push('/training')
     },
     {
-      id: 'report',
-      title: 'Report Incident',
-      subtitle: 'Quick reporting',
-      icon: AlertTriangle,
-      color: '#B03A2E',
-      bgColor: 'rgba(176, 58, 46, 0.1)',
-      onPress: () => router.push('/incidents/new' as any)
-    },
-    {
       id: 'certificates',
-      title: 'View Certificates',
-      subtitle: 'Check status',
+      title: t('home.quickActions.viewCertificates'),
+      subtitle: t('home.quickActions.checkStatus'),
       icon: Award,
       color: '#1B365D',
       bgColor: 'rgba(27, 54, 93, 0.1)',
       onPress: () => router.push('/_sitemap')
     },
     {
+      id: 'report',
+      title: t('home.quickActions.reportIncident'),
+      subtitle: t('home.quickActions.quickReporting'),
+      icon: AlertTriangle,
+      color: '#B03A2E',
+      bgColor: 'rgba(176, 58, 46, 0.1)',
+      onPress: () => router.push('/incidents/new' as any)
+    },
+    {
       id: 'profile',
-      title: 'My Profile',
-      subtitle: 'Update info',
+      title: t('home.quickActions.myProfile'),
+      subtitle: t('home.quickActions.updateInfo'),
       icon: Users,
       color: '#16A085',
       bgColor: 'rgba(22, 160, 133, 0.1)',
@@ -420,7 +425,7 @@ export default function Home() {
           <View style={styles.headerContent}>
             <View style={styles.headerTop}>
               <Text style={styles.greeting}>
-                Hi {userInfo?.name || 'User'},{'\n'}
+                Hi {userInfo?.name?.split(' ')[0] || t('common.user')},{'\n'}
                 <Text style={styles.greetingTime}>{getGreeting()}!</Text>
               </Text>
               <TouchableOpacity
@@ -444,7 +449,7 @@ export default function Home() {
                 <Shield size={18} color="#F97316" />
               </View>
               <View style={[styles.headerTipContent, { opacity: fadeAnim }]}>
-                <Text style={styles.headerTipTitle}>Today's Safety Tip</Text>
+                <Text style={styles.headerTipTitle}>{t('home.safetyTip.title')}</Text>
                 <Text style={styles.headerTipText}>
                   {tipOfTheDay}
                 </Text>
@@ -459,7 +464,7 @@ export default function Home() {
           <View style={styles.statsContainer}>
           <View style={styles.recommendationsHeader}>
             <TrendingUp style={{marginBottom: 10}} size={20} color="#FF6B35" />
-            <Text style={styles.sectionTitle}>Your Progress</Text>
+            <Text style={styles.sectionTitle}>{t('home.stats.yourProgress')}</Text>
           </View>
           <View style={styles.statsCard}>
             <View style={styles.statRow}>
@@ -469,7 +474,7 @@ export default function Home() {
                 </View>
                 <View style={styles.statContent}>
                   <Text style={styles.statNumber}>{stats.completedTrainings}</Text>
-                  <Text style={styles.statLabel}>Courses Completed</Text>
+                  <Text style={styles.statLabel}>{t('home.stats.trainingsCompleted')}</Text>
                 </View>
               </View>
             </View>
@@ -483,7 +488,7 @@ export default function Home() {
                 </View>
                 <View style={styles.statContent}>
                   <Text style={styles.statNumber}>{stats.pendingTrainings}</Text>
-                  <Text style={styles.statLabel}>Pending Courses</Text>
+                  <Text style={styles.statLabel}>{t('home.stats.pendingTrainings')</Text>
                 </View>
               </View>
             </View>
@@ -497,20 +502,20 @@ export default function Home() {
                 </View>
                 <View style={styles.statContent}>
                   <Text style={styles.statNumber}>{stats.reportsSubmitted}</Text>
-                  <Text style={styles.statLabel}>Reports Submitted</Text>
+                  <Text style={styles.statLabel}>{t('home.stats.reportsSubmitted')}</Text>
                 </View>
               </View>
             </View>
           </View>
         </View>
 
-
           {/* Quick Actions */}
-          <View style={styles.quickActionsContainer}>
+        <View style={styles.quickActionsContainer}>
           <View style={styles.recommendationsHeader}>
             <Hourglass style={{marginBottom: 14}} size={20} color="#FF6B35" />
-            <Text style={styles.sectionTitle}>Quick Actions</Text>
+            <Text style={styles.sectionTitle}>{t('home.quickActionsTitle')}</Text>
           </View>
+
           <View style={styles.actionsGrid}>
             {quickActions.map((action) => {
               const IconComponent = action.icon;
@@ -532,7 +537,6 @@ export default function Home() {
           </View>
         </View>
 
-
           {/* AI Recommendations */}
           {enrolledCourseIds.length > 0 && (
             <View style={styles.recommendationsContainer}>
@@ -551,7 +555,7 @@ export default function Home() {
                   {recommendations.map((rec, index) => {
                     const course = courses.find(c => c.id === rec.courseId);
                     if (!course) return null;
-
+                    
                     return (
                       <TouchableOpacity
                         key={index}

@@ -5,7 +5,10 @@ import { ChevronLeft, ChevronRight, TrendingUp, AlertTriangle, Clock, CheckCircl
 import { collection, query, where, getDocs } from 'firebase/firestore'
 import { auth, db } from '@/config/firebaseConfig'
 import { useRouter } from 'expo-router'
-import { LineChart, BarChart } from 'react-native-chart-kit'
+import { LineChart, BarChart, PieChart, ProgressChart } from 'react-native-chart-kit'
+import { Svg } from 'react-native-svg'
+import { useLanguage } from '@/providers/languageContext' // NEW
+
 
 const { width } = Dimensions.get('window')
 
@@ -27,6 +30,7 @@ type TrendView = 'weekly' | 'monthly'
 
 export default function Analytics() {
   const router = useRouter()
+  const { t } = useLanguage() // NEW
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null)
   const [initialLoading, setInitialLoading] = useState(true)
   const [statsTimeRange, setStatsTimeRange] = useState<'7d' | '30d' | '90d' | '1y'>('30d')
@@ -257,11 +261,22 @@ export default function Analytics() {
 
   const getTimeRangeLabel = (range: string) => {
     switch (range) {
-      case '7d': return 'Last 7 Days'
-      case '30d': return 'Last 30 Days'
-      case '90d': return 'Last 90 Days'
-      case '1y': return 'Last Year'
-      default: return 'Last 30 Days'
+      case '7d': return t('analytics.timeRange.7days')
+      case '30d': return t('analytics.timeRange.30days')
+      case '90d': return t('analytics.timeRange.90days')
+      case '1y': return t('analytics.timeRange.1year')
+      default: return t('analytics.timeRange.30days')
+    }
+  }
+
+  // NEW: Function to get translated priority labels
+  const getPriorityLabel = (priority: string) => {
+    switch (priority) {
+      case 'low': return t('reports.priority.low')
+      case 'medium': return t('reports.priority.medium')
+      case 'high': return t('reports.priority.high')
+      case 'critical': return t('reports.priority.critical')
+      default: return priority
     }
   }
 
@@ -284,8 +299,8 @@ export default function Analytics() {
           <View style={styles.loadingIconContainer}>
             <Activity size={40} color="#FF6B35" />
           </View>
-          <Text style={styles.loadingText}>Analyzing data...</Text>
-          <Text style={styles.loadingSubtext}>Please wait</Text>
+          <Text style={styles.loadingText}>{t('analytics.analyzingData')}</Text>
+          <Text style={styles.loadingSubtext}>{t('analytics.pleaseWait')}</Text>
         </View>
       </SafeAreaView>
     )
@@ -318,7 +333,7 @@ export default function Analytics() {
           <ChevronLeft size={24} color="#111827" />
         </TouchableOpacity>
         <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Analytics</Text>
+          <Text style={styles.headerTitle}>{t('analytics.title')}</Text>
           <Text style={styles.headerSubtitle}>{getTimeRangeLabel(statsTimeRange)}</Text>
         </View>
         <View style={styles.headerIcon}>
@@ -335,10 +350,10 @@ export default function Analytics() {
         <View style={styles.timeRangeSection}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.timeRangeContent}>
             {[
-              { key: '7d', label: '7 Days' },
-              { key: '30d', label: '30 Days' },
-              { key: '90d', label: '90 Days' },
-              { key: '1y', label: '1 Year' }
+              { key: '7d', label: t('analytics.timeRangeButtons.7days') },
+              { key: '30d', label: t('analytics.timeRangeButtons.30days') },
+              { key: '90d', label: t('analytics.timeRangeButtons.90days') },
+              { key: '1y', label: t('analytics.timeRangeButtons.1year') }
             ].map((range) => (
               <TouchableOpacity
                 key={range.key}
@@ -362,7 +377,7 @@ export default function Analytics() {
         <View style={styles.statsBar}>
           <View style={styles.statItem}>
             <Text style={styles.statValue}>{analyticsData.totalIncidents}</Text>
-            <Text style={styles.statLabel}>Total Incidents</Text>
+            <Text style={styles.statLabel}>{t('analytics.totalIncidents')}</Text>
             {analyticsData.trendIndicators.incidentChange !== 0 && (
               <Text style={[
                 styles.trendBadge,
@@ -375,7 +390,7 @@ export default function Analytics() {
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
             <Text style={[styles.statValue, { color: '#EF4444' }]}>{analyticsData.criticalIncidents}</Text>
-            <Text style={styles.statLabel}>Critical</Text>
+            <Text style={styles.statLabel}>{t('analytics.critical')}</Text>
             {analyticsData.trendIndicators.criticalChange !== 0 && (
               <Text style={[
                 styles.trendBadge,
@@ -390,7 +405,7 @@ export default function Analytics() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <AlertTriangle size={20} color="#FF6B35" />
-            <Text style={styles.sectionTitle}>Risk Level Distribution</Text>
+            <Text style={styles.sectionTitle}>{t('analytics.riskDistribution')}</Text>
           </View>
           <View style={styles.priorityDistribution}>
             {analyticsData.incidentsByPriority.map((item) => (
@@ -398,7 +413,7 @@ export default function Analytics() {
                 <View style={styles.priorityInfo}>
                   <View style={[styles.priorityDot, { backgroundColor: item.color }]} />
                   <Text style={styles.priorityName}>
-                    {item.priority.charAt(0).toUpperCase() + item.priority.slice(1)}
+                    {getPriorityLabel(item.priority)}
                   </Text>
                 </View>
                 <Text style={[styles.priorityCount, { color: item.color }]}>
@@ -412,7 +427,7 @@ export default function Analytics() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <BarChart3 size={20} color="#FF6B35" />
-            <Text style={styles.sectionTitle}>Incidents by Type</Text>
+            <Text style={styles.sectionTitle}>{t('analytics.incidentsByType')}</Text>
           </View>
 
           <BarChart
@@ -455,8 +470,9 @@ export default function Analytics() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <TrendingUp size={20} color="#FF6B35" />
-            <Text style={styles.sectionTitle}>Incident Trend</Text>
+            <Text style={styles.sectionTitle}>{t('analytics.incidentTrend')}</Text>
           </View>
+
           {/* Trend View Toggle */}
           <View style={styles.trendViewToggle}>
             <TouchableOpacity

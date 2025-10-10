@@ -1,0 +1,318 @@
+{
+  "common": {
+    "appName": "සේෆ්සර්ට්",
+    "loading": "පූරණය වෙමින්...",
+    "save": "සුරකින්න",
+    "cancel": "අවලංගු කරන්න",
+    "delete": "මකන්න",
+    "edit": "සංස්කරණය",
+    "submit": "ඉදිරිපත් කරන්න",
+    "confirm": "තහවුරු කරන්න",
+    "back": "ආපසු",
+    "next": "ඊළඟ",
+    "done": "අවසන්",
+    "yes": "ඔව්",
+    "no": "නැත",
+    "notProvided": "සපයා නැත",
+    "notAssigned": "පවරා නැත",
+    "errorLoadingData": "දත්ත පූරණය කිරීමට අසමත් විය",
+    "user": "පරිශීලක",
+    "validation": "සත්‍යාපනය",
+    "success": "සාර්ථකයි",
+    "error": "දෝෂයක්"
+  },
+  "auth": {
+    "login": "ඇතුල් වන්න",
+    "signup": "ලියාපදිංචි වන්න",
+    "email": "විද්‍යුත් තැපෑල",
+    "password": "මුරපදය",
+    "forgotPassword": "මුරපදය අමතකද?",
+    "loginSuccess": "ඇතුල්වීම සාර්ථකයි",
+    "loginError": "ඇතුල්වීම අසාර්ථකයි",
+    "logout": "ඉවත් වන්න"
+  },
+  "onboarding": {
+    "welcome": "සේෆ්සර්ට් වෙත සාදරයෙන් පිළිගනිමු",
+    "getStarted": "ආරම්භ කරන්න",
+    "skip": "මඟ හරින්න",
+    "feature1Title": "ආරක්ෂණ පුහුණුව",
+    "feature1Description": "විස්තීර්ණ ආරක්ෂණ පුහුණු ද්‍රව්‍ය වෙත ප්‍රවේශය",
+    "feature2Title": "සහතික ලබා ගන්න",
+    "feature2Description": "පාඨමාලා සම්පූර්ණ කිරීමෙන් සහතික ලබා ගන්න",
+    "feature3Title": "සිදුවීම් වාර්තා කරන්න",
+    "feature3Description": "ඉක්මන් හා පහසු සිදුවීම් වාර්තා කිරීමේ පද්ධතිය"
+  },
+  "tabs": {
+    "certificates": "සහතික",
+    "profile": "පැතිකඩ",
+    "report": "වාර්තාව",
+    "training": "පුහුණුව"
+  },
+  "training": {
+    "title": "ආරක්ෂණ පුහුණුව",
+    "myCourses": "මගේ පාඨමාලා",
+    "availableCourses": "ලබා ගත හැකි පාඨමාලා",
+    "completed": "සම්පූර්ණ කළ",
+    "inProgress": "ක්‍රියාත්මක",
+    "notStarted": "ආරම්භ නොකළ",
+    "startCourse": "පාඨමාලාව ආරම්භ කරන්න",
+    "continueCourse": "දිගටම කරන්න",
+    "readAloud": "හයියෙන් කියවන්න",
+    "stopReading": "කියවීම නවත්වන්න"
+  },
+  "certificates": {
+    "title": "මගේ සහතික",
+    "earned": "ලබාගත් සහතික",
+    "pending": "අපේක්ෂාවෙන්",
+    "download": "බාගන්න",
+    "share": "බෙදා ගන්න",
+    "validUntil": "වලංගු දිනය",
+    "noCertificates": "තවමත් සහතික නැත"
+  },
+  "incidents": {
+    "title": "සිදුවීම් වාර්තාව",
+    "newReport": "නව වාර්තාව",
+    "myReports": "මගේ වාර්තා",
+    "description": "විස්තරය",
+    "location": "ස්ථානය",
+    "date": "දිනය",
+    "severity": "බරපතලකම",
+    "low": "අඩු",
+    "medium": "මධ්‍යම",
+    "high": "ඉහළ",
+    "critical": "විවේචනාත්මක",
+    "submitReport": "වාර්තාව ඉදිරිපත් කරන්න",
+    "editReport": "වාර්තාව සංස්කරණය කරන්න",
+    "reportSubmitted": "වාර්තාව සාර්ථකව ඉදිරිපත් කරන ලදී"
+  },
+  "profile": {
+    "title": "පැතිකඩ",
+    "editProfile": "පැතිකඩ සංස්කරණය කරන්න",
+    "name": "නම",
+    "email": "විද්‍යුත් තැපෑල",
+    "phone": "දුරකථනය",
+    "language": "භාෂාව",
+    "settings": "සැකසුම්",
+    "changeLanguage": "භාෂාව වෙනස් කරන්න",
+    "notifications": "දැනුම්දීම්",
+    "privacy": "පෞද්ගලිකත්වය",
+    "about": "පිළිබඳව",
+    "fullName": "සම්පූර්ණ නම",
+    "department": "අංශය",
+    "personalInfo": "පෞද්ගලික තොරතුරු",
+    "employee": "සේවක",
+    "logoutConfirm": "ඔබට ඇත්තේ පිටවීමට විශ්වාසද?",
+    "updateSuccess": "පැතිකඩ සාර්ථකව යාවත්කාලීන කරන ලදී",
+    "updateError": "පැතිකඩ යාවත්කාලීන කිරීමට අසමත් විය",
+    "unableToLoad": "පැතිකඩ පූරණය කිරීමට නොහැක",
+    "switchAccount": "ගිණුම මාරු කරන්න",
+    "switchConfirm": "ඔබට අධ්‍යාපන ගුරුවර ගිණුමට මාරු කිරීමට විශ්වාසද?",
+    "switch": "මාරු කරන්න",
+    "switchToInstructor": "ගුරුවර ගිණුමට මාරු කරන්න",
+    "notificationsComingSoon": "දැනුම්දීම් සැකසුම් ඉක්මනින්!",
+    "privacyComingSoon": "පෞද්ගලිකත්ව හා ආරක්ෂණ සැකසුම් ඉක්මනින්!",
+    "helpComingSoon": "උදව් & සහාය මධ්‍යස්ථානය ඉක්මනින්!",
+    "helpSupport": "උදව් & සහාය",
+    "appVersion": "ආරක්ෂණ යෙදුම v1.0.0",
+    "copyright": "© 2025 Safety First Inc."
+  },
+  "languages": {
+    "english": "ඉංග්‍රීසි",
+    "sinhala": "සිංහල",
+    "tamil": "දෙමළ"
+  },
+  "home": {
+    "greetings": {
+      "welcome": "සාදරයෙන් පිළිගනිමු",
+      "morning": "සුභ උදෑසනක්",
+      "afternoon": "සුභ සන්ධ්‍යාවක්",
+      "evening": "සුභ රාත්‍රියක්"
+    },
+    "stats": {
+      "yourProgress": "ඔබගේ ප්‍රගතිය",
+      "trainingsCompleted": "සම්පූර්ණ කළ පුහුණු",
+      "activeCertificates": "ක්‍රියාත්මක සහතික",
+      "pendingTrainings": "පොරොත්තු පුහුණු",
+      "reportsSubmitted": "ඉදිරිපත් කළ වාර්තා"
+    },
+    "quickActionsTitle": "ඉක්මන් ක්‍රියා",
+    "quickActions": {
+      "startTraining": "පුහුණුව ආරම්භ කරන්න",
+      "continueLearn": "ඉගෙනීම දිගටම කරන්න",
+      "viewCertificates": "සහතික බලන්න",
+      "checkStatus": "තත්ත්වය පරීක්ෂා කරන්න",
+      "reportIncident": "සිදුවීම වාර්තා කරන්න",
+      "quickReporting": "ඉක්මන් වාර්තාව",
+      "myProfile": "මගේ පැතිකඩ",
+      "updateInfo": "තොරතුරු යාවත්කාලීන කරන්න"
+    },
+    "recentActivityTitle": "මෑත ක්‍රියාකාරකම්",
+    "recentActivity": {
+      "completedTraining": "සම්පූර්ණයි: ගිනි ආරක්ෂණ පුහුණුව",
+      "certRenewal": "සහතිකය අළුත් කිරීමේ සිහිකැඳවීම",
+      "reportSubmitted": "ආරක්ෂණ වාර්තාව ඉදිරිපත් කළා",
+      "hoursAgo": "පැයකට පෙර",
+      "hourAgo": "පැයකට පෙර",
+      "dayAgo": "දිනකට පෙර",
+      "daysAgo": "දිනකට පෙර"
+    },
+    "safetyTip": {
+      "title": "අද දිනයේ ආරක්ෂණ උපදෙස",
+      "content": "ඉදිකිරීම් කලාප වලට ඇතුල් වන විට සැමවිටම නිසි PPE පැළඳ සිටින්න. ඔබේ ආරක්ෂාව අපගේ ප්‍රමුඛතාවයයි."
+    }
+  },
+  "reports": {
+    "title": "සිදුවීම් වාර්තා",
+    "searchPlaceholder": "ස්ථානය, වර්ගය හෝ විස්තරය අනුව සොයන්න...",
+    "recent": "මෑතකදී",
+    "deleteConfirm": "ඔබට මෙම සිදුවීම් වාර්තාව මකා දැමීමට විශ්වාසද? මෙම ක්‍රියාව ආපසු හැරවිය නොහැක.",
+    "deleteSuccess": "වාර්තාව සාර්ථකව මකා දමන ලදී",
+    "deleteError": "වාර්තාව මකා දැමීමට අසමත් විය",
+    "resultFound": "ප්‍රතිඵලයක් හමු විය",
+    "resultsFound": "ප්‍රතිඵල හමු විය",
+    "status": {
+      "pending": "පොරොත්තුවෙන්",
+      "investigating": "විමර්ශනය",
+      "resolved": "විසඳා ඇත",
+      "closed": "වසා ඇත"
+    },
+    "priority": {
+      "low": "අඩු",
+      "medium": "මධ්‍යම",
+      "high": "ඉහළ",
+      "critical": "විවේචනාත්මක"
+    },
+    "filters": {
+      "all": "සියල්ල",
+      "pending": "පොරොත්තුවෙන්",
+      "inProgress": "ක්‍රියාත්මකයි",
+      "resolved": "විසඳා ඇත",
+      "closed": "වසා ඇත"
+    },
+    "actions": {
+      "view": "බලන්න",
+      "edit": "සංස්කරණය",
+      "delete": "මකන්න"
+    },
+    "empty": {
+      "title": "සිදුවීම් වාර්තා නැත",
+      "searchText": "ඔබේ සෙවුම සකස් කිරීමට උත්සාහ කරන්න",
+      "noReports": "ආරම්භ කිරීමට ඔබේ පළමු සිදුවීම් වාර්තාව සාදන්න"
+    }
+  },
+  "createIncident": {
+    "title": "සිදුවීම් වාර්තාවක් සාදන්න",
+    "incidentType": "සිදුවීමේ වර්ගය",
+    "priorityLabel": "ප්‍රමුඛතාවය",
+    "location": "ස්ථානය",
+    "description": "විස්තරය",
+    "attachments": "ඇමුණුම්",
+    "optional": "විකල්ප",
+    "characters": "අක්ෂර",
+    "submitting": "ඉදිරිපත් කරමින්...",
+    "submitButton": "වාර්තාව ඉදිරිපත් කරන්න",
+    "success": "සිදුවීම් වාර්තාව සාර්ථකව ඉදිරිපත් කරන ලදී!",
+    "types": {
+      "injury": "තුවාල",
+      "nearMiss": "අසන්න අනතුරක්",
+      "hazard": "අනතුරු",
+      "equipmentFailure": "උපකරණ විනාශය",
+      "propertyDamage": "දේපළ හානිය",
+      "environmental": "පාරිසරික සිදුවීම"
+    },
+    "priority": {
+      "low": "අඩු",
+      "medium": "මධ්‍යම",
+      "high": "ඉහළ",
+      "critical": "අත්‍යවශ්‍ය"
+    },
+    "placeholders": {
+      "location": "ස්ථානය ඇතුළත් කරන්න",
+      "description": "සිදුවීම පිළිබඳ විස්තරය සඳහන් කරන්න..."
+    },
+    "media": {
+      "addMedia": "මාධ්‍ය එක් කරන්න",
+      "chooseOption": "මාධ්‍ය එක් කිරීමට විකල්පයක් තෝරන්න",
+      "takePhoto": "ඡායාරූපයක් ගන්න",
+      "recordVideo": "වීඩියෝවක් රැකගන්න",
+      "photoLibrary": "ඡායාරූප ගොනුවෙන් තෝරන්න",
+      "videoLibrary": "වීඩියෝ ගොනුවෙන් තෝරන්න",
+      "addPhotosVideos": "ඡායාරූප හෝ වීඩියෝ එකතු කරන්න",
+      "takeOrChoose": "ඡායාරූපයක් ගන්න හෝ ගොනුවක් තෝරන්න",
+      "addMore": "තවත් එකතු කරන්න",
+      "file": "ගොනුව",
+      "files": "ගොනු",
+      "video": "වීඩියෝව"
+    },
+    "errors": {
+      "mediaPermission": "මාධ්‍ය ගොනුවට ප්‍රවේශ වීමට අවසර අවශ්‍ය වේ.",
+      "cameraPermission": "කැමරාවට ප්‍රවේශ වීමට අවසර අවශ්‍ය වේ.",
+      "locationPermission": "ස්ථානයට ප්‍රවේශ වීමට අවසර අවශ්‍ය වේ.",
+      "pickMedia": "මාධ්‍ය තෝරා ගැනීමට අසමත් විය. කරුණාකර නැවත උත්සාහ කරන්න.",
+      "takePhoto": "ඡායාරූපය ගැනීමට අසමත් විය. නැවත උත්සාහ කරන්න.",
+      "recordVideo": "වීඩියෝව රැක ගැනීමට අසමත් විය. නැවත උත්සාහ කරන්න.",
+      "gpsLocation": "GPS ස්ථානය ලබා ගැනීමට අසමත් විය.",
+      "fillRequired": "අවශ්‍ය සියලු ක්ෂේත්‍ර පුරවන්න.",
+      "mustLogin": "වාර්තාවක් ඉදිරිපත් කිරීමට ඔබ ලොග් වී සිටිය යුතුය.",
+      "submitFailed": "සිදුවීම් වාර්තාව ඉදිරිපත් කිරීමට අසමත් විය. කරුණාකර නැවත උත්සාහ කරන්න."
+    }
+  },
+  "analytics": {
+    "title": "විශ්ලේෂණ",
+    "analyzingData": "දත්ත විශ්ලේෂණය කරමින්...",
+    "pleaseWait": "කරුණාකර රැඳී සිටින්න",
+    "totalIncidents": "මුළු සිදුවීම්",
+    "critical": "විවේචනාත්මක",
+    "safetyTips": "ආරක්ෂණ උපදෙස්",
+    "riskDistribution": "අවදානම් මට්ටම් බෙදාහැරීම",
+    "incidentsByType": "වර්ගය අනුව සිදුවීම්",
+    "incidentTrend": "සිදුවීම් ප්‍රවණතාව",
+    "timeRange": {
+      "7days": "පසුගිය දින 7",
+      "30days": "පසුගිය දින 30",
+      "90days": "පසුගිය දින 90",
+      "1year": "පසුගිය වර්ෂය"
+    },
+    "timeRangeButtons": {
+      "7days": "දින 7",
+      "30days": "දින 30",
+      "90days": "දින 90",
+      "1year": "වසර 1"
+    },
+    "weekLabels": {
+      "week1": "සතිය 1",
+      "week2": "සතිය 2",
+      "week3": "සතිය 3",
+      "week4": "සතිය 4"
+    },
+    "tips": {
+      "criticalIncidents": "මෙම කාලය තුළ විවේචනාත්මක සිදුවීම් {count}ක් - ඔබේ කණ්ඩායම සමඟ හදිසි ක්‍රියාවලි සමාලෝචනය කරන්න",
+      "highRiskDetected": "ඉහළ අවදානම් සිදුවීම් අනාවරණය වී ඇත - සියලුම ආරක්ෂණ උපකරණ ක්‍රියාත්මක හා ප්‍රවේශ විය හැකි බව සහතික කරන්න",
+      "multipleIncidents": "බහුවිධ සිදුවීම් වාර්තා වී ඇත - සියලුම කාර්ය මණ්ඩලය සඳහා ආරක්ෂණ විගණනයක් සහ නැවුම් පුහුණුවක් පවත්වන්න",
+      "stayAlert": "අනාගත සිදුවීම් වැළැක්වීමට අනාරක්ෂිත තත්වයන් වහාම වාර්තා කිරීමට සැලකිලිමත් වන්න",
+      "greatJob": "කදිම වැඩක්! ආරක්ෂණ ප්‍රොටෝකෝල අනුගමනය කිරීම හා සන්සුන්භාවය පවත්වාගෙන යන්න"
+    }
+  },
+  "course": {
+    "createCourse": "පාඨමාලා තනන්න",
+    "createCertificate": "සහතිකයක් තනන්න",
+    "createNewCourse": "නව පාඨමාලාවක් තනන්න",
+    "courseId": "පාඨමාලා හැඳුනුම් අංකය",
+    "courseTitle": "පාඨමාලා ශීර්ෂය",
+    "description": "විස්තරය",
+    "enterCourseTitle": "පාඨමාලා ශීර්ෂය ඇතුළත් කරන්න",
+    "enterDescription": "කෙටි විස්තරයක් ඇතුළත් කරන්න",
+    "saveContinue": "සුරකින්න සහ ඉදිරියට යන්න",
+    "fillAllFields": "කරුණාකර සියලු ක්ෂේත්‍ර පුරවන්න.",
+    "createSuccess": "පාඨමාලාව සාර්ථකව නිර්මාණය කරන ලදි!",
+    "createError": "පාඨමාලාව නිර්මාණය කිරීමට අසමත් විය. නැවත උත්සාහ කරන්න.",
+    "trainingCourses": "පුහුණු පාඨමාලා",
+    "create": "තනන්න",
+    "loadingCourses": "පාඨමාලා පූරණය වෙමින්...",
+    "noCoursesYet": "තවමත් පාඨමාලා නොමැත",
+    "createFirstCourse": "පුහුණුව ආරම්භ කිරීමට ඔබගේ ප්‍රථම පාඨමාලාව තනන්න",
+    "topic": "මාතෘකාව",
+    "topics": "මාතෘකා",
+    "viewCourse": "පාඨමාලාව බලන්න"
+  }
+}

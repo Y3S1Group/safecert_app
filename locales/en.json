@@ -1,0 +1,318 @@
+{
+  "common": {
+    "appName": "SafeCert",
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "submit": "Submit",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "done": "Done",
+    "yes": "Yes",
+    "no": "No",
+    "notProvided": "Not Provided",
+    "notAssigned": "Not Assigned",
+    "errorLoadingData": "Error loading data",
+    "user": "User",
+    "validation": "Validation",
+    "success": "Success",
+    "error": "Error"
+  },
+  "auth": {
+    "login": "Login",
+    "signup": "Sign Up",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot Password?",
+    "loginSuccess": "Login Successful",
+    "loginError": "Login Failed",
+    "logout": "Logout"
+  },
+  "onboarding": {
+    "welcome": "Welcome to SafeCert",
+    "getStarted": "Get Started",
+    "skip": "Skip",
+    "feature1Title": "Safety Training",
+    "feature1Description": "Access comprehensive safety training materials",
+    "feature2Title": "Get Certified",
+    "feature2Description": "Earn certificates upon completing courses",
+    "feature3Title": "Report Incidents",
+    "feature3Description": "Quick and easy incident reporting system"
+  },
+  "tabs": {
+    "certificates": "Certificates",
+    "profile": "Profile",
+    "report": "Report",
+    "training": "Training"
+  },
+  "training": {
+    "title": "Safety Training",
+    "myCourses": "My Courses",
+    "availableCourses": "Available Courses",
+    "completed": "Completed",
+    "inProgress": "In Progress",
+    "notStarted": "Not Started",
+    "startCourse": "Start Course",
+    "continueCourse": "Continue",
+    "readAloud": "Read Aloud",
+    "stopReading": "Stop Reading"
+  },
+  "certificates": {
+    "title": "My Certificates",
+    "earned": "Earned Certificates",
+    "pending": "Pending",
+    "download": "Download",
+    "share": "Share",
+    "validUntil": "Valid Until",
+    "noCertificates": "No certificates yet"
+  },
+  "incidents": {
+    "title": "Incident Report",
+    "newReport": "New Report",
+    "myReports": "My Reports",
+    "description": "Description",
+    "location": "Location",
+    "date": "Date",
+    "severity": "Severity",
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High",
+    "critical": "Critical",
+    "submitReport": "Submit Report",
+    "editReport": "Edit Report",
+    "reportSubmitted": "Report Submitted Successfully"
+  },
+  "profile": {
+    "title": "Profile",
+    "editProfile": "Edit Profile",
+    "name": "Name",
+    "email": "Email",
+    "phone": "Phone",
+    "language": "Language",
+    "settings": "Settings",
+    "changeLanguage": "Change Language",
+    "notifications": "Notifications",
+    "privacy": "Privacy & Security",
+    "about": "About",
+    "fullName": "Full Name",
+    "department": "Department",
+    "personalInfo": "Personal Information",
+    "employee": "Employee",
+    "logoutConfirm": "Are you sure you want to log out?",
+    "updateSuccess": "Profile updated successfully",
+    "updateError": "Failed to update profile",
+    "unableToLoad": "Unable to load profile",
+    "switchAccount": "Switch Account",
+    "switchConfirm": "Are you sure you want to switch to your Teacher account?",
+    "switch": "Switch",
+    "switchToInstructor": "Switch to Instructor Account",
+    "notificationsComingSoon": "Notification settings coming soon! Stay tuned for updates.",
+    "privacyComingSoon": "Privacy & Security settings coming soon!",
+    "helpComingSoon": "Help & Support center coming soon!",
+    "helpSupport": "Help & Support",
+    "appVersion": "Safety App v1.0.0",
+    "copyright": "© 2025 Safety First Inc."
+  },
+  "languages": {
+    "english": "English",
+    "sinhala": "සිංහල",
+    "tamil": "தமிழ்"
+  },
+  "home": {
+    "greetings": {
+      "welcome": "Welcome",
+      "morning": "Good morning",
+      "afternoon": "Good afternoon",
+      "evening": "Good evening"
+    },
+    "stats": {
+      "yourProgress": "Your Progress",
+      "trainingsCompleted": "Trainings Completed",
+      "activeCertificates": "Active Certificates",
+      "pendingTrainings": "Pending Trainings",
+      "reportsSubmitted": "Reports Submitted"
+    },
+    "quickActionsTitle": "Quick Actions",
+    "quickActions": {
+      "startTraining": "Start Training",
+      "continueLearn": "Continue learning",
+      "viewCertificates": "View Certificates",
+      "checkStatus": "Check status",
+      "reportIncident": "Report Incident",
+      "quickReporting": "Quick reporting",
+      "myProfile": "My Profile",
+      "updateInfo": "Update info"
+    },
+    "recentActivityTitle": "Recent Activity",
+    "recentActivity": {
+      "completedTraining": "Completed: Fire Safety Training",
+      "certRenewal": "Certificate Renewal Reminder",
+      "reportSubmitted": "Safety Report Submitted",
+      "hoursAgo": "hours ago",
+      "hourAgo": "hour ago",
+      "dayAgo": "day ago",
+      "daysAgo": "days ago"
+    },
+    "safetyTip": {
+      "title": "Safety Tip of the Day",
+      "content": "Always wear proper PPE when entering construction zones. Your safety is our priority."
+    }
+  },
+  "reports": {
+    "title": "Incident Reports",
+    "searchPlaceholder": "Search by location, type, or description...",
+    "recent": "Recent",
+    "deleteConfirm": "Are you sure you want to delete this incident report? This action cannot be undone.",
+    "deleteSuccess": "Report deleted successfully",
+    "deleteError": "Failed to delete report",
+    "resultFound": "result found",
+    "resultsFound": "results found",
+    "status": {
+      "pending": "Pending",
+      "investigating": "Investigating",
+      "resolved": "Resolved",
+      "closed": "Closed"
+    },
+    "priority": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "critical": "Critical"
+    },
+    "filters": {
+      "all": "All",
+      "pending": "Pending",
+      "inProgress": "In Progress",
+      "resolved": "Resolved",
+      "closed": "Closed"
+    },
+    "actions": {
+      "view": "View",
+      "edit": "Edit",
+      "delete": "Delete"
+    },
+    "empty": {
+      "title": "No incident reports",
+      "searchText": "Try adjusting your search",
+      "noReports": "Create your first incident report to get started"
+    }
+  },
+  "createIncident": {
+    "title": "Create Incident Report",
+    "incidentType": "Incident Type",
+    "priorityLabel": "Priority",
+    "location": "Location",
+    "description": "Description",
+    "attachments": "Attachments",
+    "optional": "Optional",
+    "characters": "characters",
+    "submitting": "Submitting...",
+    "submitButton": "Submit Report",
+    "success": "Incident report submitted successfully!",
+    "types": {
+      "injury": "Injury",
+      "nearMiss": "Near Miss",
+      "hazard": "Hazard",
+      "equipmentFailure": "Equipment Failure",
+      "propertyDamage": "Property Damage",
+      "environmental": "Environmental"
+    },
+    "priority": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "critical": "Critical"
+    },
+    "placeholders": {
+      "location": "Enter location manually",
+      "description": "Describe what happened in detail. Include any relevant information about the incident..."
+    },
+    "media": {
+      "addMedia": "Add Media",
+      "chooseOption": "Choose an option to upload media",
+      "takePhoto": "Take Photo",
+      "recordVideo": "Record Video",
+      "photoLibrary": "Choose Photo from Library",
+      "videoLibrary": "Choose Video from Library",
+      "addPhotosVideos": "Add Photos or Videos",
+      "takeOrChoose": "Take a photo or choose from library",
+      "addMore": "Add More",
+      "file": "file",
+      "files": "files",
+      "video": "Video"
+    },
+    "errors": {
+      "mediaPermission": "Permission to access media library is required.",
+      "cameraPermission": "Permission to access camera is required.",
+      "locationPermission": "Permission to access location is required.",
+      "pickMedia": "Failed to pick media. Please try again.",
+      "takePhoto": "Failed to take photo. Please try again.",
+      "recordVideo": "Failed to record video. Please try again.",
+      "gpsLocation": "Failed to retrieve GPS location.",
+      "fillRequired": "Please fill in all required fields.",
+      "mustLogin": "You must be logged in to submit a report.",
+      "submitFailed": "Failed to submit the incident report. Please try again later."
+    }
+  },
+  "analytics": {
+    "title": "Analytics",
+    "analyzingData": "Analyzing data...",
+    "pleaseWait": "Please wait",
+    "totalIncidents": "Total Incidents",
+    "critical": "Critical",
+    "safetyTips": "Safety Tips",
+    "riskDistribution": "Risk Level Distribution",
+    "incidentsByType": "Incidents by Type",
+    "incidentTrend": "Incident Trend",
+    "timeRange": {
+      "7days": "Last 7 Days",
+      "30days": "Last 30 Days",
+      "90days": "Last 90 Days",
+      "1year": "Last Year"
+    },
+    "timeRangeButtons": {
+      "7days": "7 Days",
+      "30days": "30 Days",
+      "90days": "90 Days",
+      "1year": "1 Year"
+    },
+    "weekLabels": {
+      "week1": "Week 1",
+      "week2": "Week 2",
+      "week3": "Week 3",
+      "week4": "Week 4"
+    },
+    "tips": {
+      "criticalIncidents": "{count} critical incidents this period - Review emergency procedures with your team",
+      "highRiskDetected": "High-risk incidents detected - Ensure all safety equipment is functional and accessible",
+      "multipleIncidents": "Multiple incidents reported - Conduct a safety audit and refresher training for all staff",
+      "stayAlert": "Stay alert and report any unsafe conditions immediately to prevent future incidents",
+      "greatJob": "Great job! Keep following safety protocols and maintain vigilance"
+    }
+  },
+  "course": {
+    "createCourse": "Create Course",
+    "createCertificate": "Create Certificate",
+    "createNewCourse": "Create New Course",
+    "courseId": "Course ID",
+    "courseTitle": "Course Title",
+    "description": "Description",
+    "enterCourseTitle": "Enter course title",
+    "enterDescription": "Enter short description",
+    "saveContinue": "Save & Continue",
+    "fillAllFields": "Please fill in all fields.",
+    "createSuccess": "Course created successfully!",
+    "createError": "Failed to create course. Try again.",
+    "trainingCourses": "Training Courses",
+    "create": "Create",
+    "loadingCourses": "Loading courses...",
+    "noCoursesYet": "No Courses Yet",
+    "createFirstCourse": "Create your first course to get started with training",
+    "topic": "Topic",
+    "topics": "Topics",
+    "viewCourse": "View Course"
+  }
+}

@@ -7,6 +7,8 @@ import { StatusBar } from 'expo-status-bar';
 import { View } from "react-native";
 import { AlertProvider } from "@/contexts/AlertContext";
 import SnackbarProvider from "@/contexts/SnackbarContext";
+import { LanguageProvider } from "@/providers/languageContext"; // New
+
 import * as SplashScreen from 'expo-splash-screen';
 
 // Keep the splash screen visible while we fetch resources
@@ -102,6 +104,7 @@ export default function RootLayout() {
 
   return (
     <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+     <LanguageProvider>
       <OnboardingContext.Provider value={{ completeOnboarding }}>
         <AlertProvider>
           <SnackbarProvider>
@@ -114,6 +117,7 @@ export default function RootLayout() {
           </SnackbarProvider>
         </AlertProvider>
       </OnboardingContext.Provider>
+     </LanguageProvider> 
     </View>
   );
 }

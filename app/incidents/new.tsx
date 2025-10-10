@@ -1,3 +1,4 @@
+
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image, ActivityIndicator } from 'react-native'
 import React, { useState, useEffect } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -10,6 +11,7 @@ import { uploadMultipleImages } from '@/config/cloudinaryConfig'
 import { useRouter } from 'expo-router'
 import { useSnackbar } from '@/contexts/SnackbarContext'
 import { useAlert } from '@/contexts/AlertContext'
+import { useLanguage } from '@/providers/languageContext' // Added
 
 interface SelectedMedia {
   uri: string;
@@ -25,6 +27,7 @@ interface LocationData {
 
 export default function CreateIncident() {
   const router = useRouter()
+  const { t } = useLanguage() // Added
 
   console.log('=== CREATE INCIDENT COMPONENT MOUNTED ===')
   console.log('Component is rendering')
@@ -39,45 +42,21 @@ export default function CreateIncident() {
   const { showSnackbar } = useSnackbar()
   const { showAlert } = useAlert()
 
-  const incidentTypes = ['Injury', 'Near Miss', 'Hazard', 'Equipment Failure', 'Property Damage', 'Environmental']
-  const priorities = [
-    { key: 'low', label: 'Low', icon: '🟢' },
-    { key: 'medium', label: 'Medium', icon: '🟡' },
-    { key: 'high', label: 'High', icon: '🟠' },
-    { key: 'critical', label: 'Critical', icon: '🔴' }
+  const incidentTypes = [
+    t('createIncident.types.injury'),
+    t('createIncident.types.nearMiss'),
+    t('createIncident.types.hazard'),
+    t('createIncident.types.equipmentFailure'),
+    t('createIncident.types.propertyDamage'),
+    t('createIncident.types.environmental')
   ]
-
-  // const getCurrentLocation = async () => {
-  //   console.log('Getting current location...')
-  //   try {
-  //     const { status } = await Location.requestForegroundPermissionsAsync()
-  //     console.log('Location permission status:', status)
-  //     if (status !== 'granted') {
-  //       Alert.alert('Permission denied', 'Location permission is required for incident reporting')
-  //       console.log('Location permission denied - showing alert')
-  //       return
-  //     }
-
-  //     const location = await Location.getCurrentPositionAsync({})
-  //     const address = await Location.reverseGeocodeAsync({
-  //       latitude: location.coords.latitude,
-  //       longitude: location.coords.longitude,
-  //     })
-
-  //     const locationData: LocationData = {
-  //       latitude: location.coords.latitude,
-  //       longitude: location.coords.longitude,
-  //       address: address[0] ? `${address[0].street}, ${address[0].city}` : undefined
-  //     }
-
-  //     setCurrentLocation(locationData)
-  //     if (address[0] && !location) {
-  //       setLocation(`${address[0].street}, ${address[0].city}`)
-  //     }
-  //   } catch (error) {
-  //     console.error('Error getting location:', error)
-  //   }
-  // }
+  
+  const priorities = [
+    { key: 'low', label: t('createIncident.priority.low'), icon: '🟢' },
+    { key: 'medium', label: t('createIncident.priority.medium'), icon: '🟡' },
+    { key: 'high', label: t('createIncident.priority.high'), icon: '🟠' },
+    { key: 'critical', label: t('createIncident.priority.critical'), icon: '🔴' }
+  ]
 
   console.log('=== About to return JSX ===')
 
@@ -86,7 +65,7 @@ export default function CreateIncident() {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
       if (status !== 'granted') {
         showSnackbar({
-          message: 'Media library permission is required',
+          message: t('createIncident.errors.mediaPermission'),
           type: 'warning'
       })
         return
@@ -111,7 +90,7 @@ export default function CreateIncident() {
     } catch (error) {
       console.error('Error picking media:', error)
       showSnackbar({
-          message: 'Failed to pick media',
+          message: t('createIncident.errors.pickMedia'),
           type: 'error'
       })
     }
@@ -122,7 +101,7 @@ export default function CreateIncident() {
       const { status } = await ImagePicker.requestCameraPermissionsAsync()
       if (status !== 'granted') {
         showSnackbar({
-          message: 'Camera permission is required',
+          message: t('createIncident.errors.cameraPermission'),
           type: 'warning'
         })
         return
@@ -145,7 +124,7 @@ export default function CreateIncident() {
     } catch (error) {
       console.error('Error taking photo:', error)
       showSnackbar({
-          message: 'Failed to take photo',
+          message: t('createIncident.errors.takePhoto'),
           type: 'error'
       })
     }
@@ -156,7 +135,7 @@ export default function CreateIncident() {
       const { status } = await ImagePicker.requestCameraPermissionsAsync()
       if (status !== 'granted') {
         showSnackbar({
-          message: 'Camera permission is required',
+          message: t('createIncident.errors.cameraPermission'),
           type: 'warning'
         })
         return
@@ -180,7 +159,7 @@ export default function CreateIncident() {
     } catch (error) {
       console.error('Error recording video:', error)
       showSnackbar({
-          message: 'Failed to record video',
+          message: t('createIncident.errors.recordVideo'),
           type: 'error'
         })
     }
@@ -192,14 +171,14 @@ export default function CreateIncident() {
 
   const showMediaOptions = () => {
     Alert.alert(
-      'Add Media',
-      'Choose an option',
+      t('createIncident.media.addMedia'),
+      t('createIncident.media.chooseOption'),
       [
-        { text: 'Take Photo', onPress: takePhoto },
-        { text: 'Record Video', onPress: recordVideo },
-        { text: 'Photo Library', onPress: () => pickMedia('image') },
-        { text: 'Video Library', onPress: () => pickMedia('video') },
-        { text: 'Cancel', style: 'cancel' }
+        { text: t('createIncident.media.takePhoto'), onPress: takePhoto },
+        { text: t('createIncident.media.recordVideo'), onPress: recordVideo },
+        { text: t('createIncident.media.photoLibrary'), onPress: () => pickMedia('image') },
+        { text: t('createIncident.media.videoLibrary'), onPress: () => pickMedia('video') },
+        { text: t('common.cancel'), style: 'cancel' }
       ]
     )
   }
@@ -209,7 +188,7 @@ export default function CreateIncident() {
     
     if (!incidentType || !location.trim() || !description.trim()) {
       showSnackbar({
-        message: 'Please fill in all required fields',
+        message: t('createIncident.errors.fillRequired'),
         type: 'error',
         duration: 3000
       })
@@ -218,7 +197,7 @@ export default function CreateIncident() {
 
     if (!auth.currentUser) {
       showSnackbar({
-        message: 'You must be logged in to submit a report',
+        message: t('createIncident.errors.mustLogin'),
         type: 'error'
       })
       return
@@ -267,7 +246,7 @@ export default function CreateIncident() {
       await addDoc(collection(db, 'incidents'), incidentData)
 
       showAlert({
-        message: 'Incident report submitted successfully!',
+        message: t('createIncident.success'),
         icon: CheckCircle,
         iconColor: '#10B981',
         iconBgColor: '#D1FAE5',
@@ -279,7 +258,7 @@ export default function CreateIncident() {
     } catch (error) {
       console.error('Error submitting report:', error)
       showSnackbar({
-        message: 'Failed to submit report. Please try again.',
+        message: t('createIncident.errors.submitFailed'),
         type: 'error',
         duration: 4000
       })
@@ -309,8 +288,7 @@ export default function CreateIncident() {
           <ChevronLeft size={24} style={styles.backButtonIcon} />
         </TouchableOpacity>
         <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>New Report</Text>
-          {/* <Text style={styles.headerSubtitle}>Fill in the details below</Text> */}
+          <Text style={styles.headerTitle}>{t('createIncident.title')}</Text>
         </View>
         <View style={styles.headerIcon}>
           <FileText size={24} color="#FF6B35" />
@@ -329,7 +307,7 @@ export default function CreateIncident() {
           <View style={styles.formGroup}>
             <View style={styles.labelContainer}>
               <Text style={styles.formLabel}>
-                Incident Type <Text style={styles.required}>*</Text>
+                {t('createIncident.incidentType')} <Text style={styles.required}>*</Text>
               </Text>
             </View>
             <View style={styles.incidentTypeGrid}>
@@ -357,7 +335,7 @@ export default function CreateIncident() {
           <View style={styles.formGroup}>
             <View style={styles.labelContainer}>
               <Text style={styles.formLabel}>
-                Priority <Text style={styles.required}>*</Text>
+                {t('createIncident.priorityLabel')} <Text style={styles.required}>*</Text>
               </Text>
             </View>
             <View style={styles.priorityGrid}>
@@ -389,7 +367,7 @@ export default function CreateIncident() {
           <View style={styles.formGroup}>
             <View style={styles.labelContainer}>
               <Text style={styles.formLabel}>
-                Location <Text style={styles.required}>*</Text>
+                {t('createIncident.location')} <Text style={styles.required}>*</Text>
               </Text>
             </View>
 
@@ -398,7 +376,7 @@ export default function CreateIncident() {
                 <MapPin size={20} color="#9CA3AF" />
                 <TextInput
                   style={styles.input}
-                  placeholder="Enter location manually"
+                  placeholder={t('createIncident.placeholders.location')}
                   placeholderTextColor="#9CA3AF"
                   value={location}
                   onChangeText={setLocation}
@@ -412,7 +390,7 @@ export default function CreateIncident() {
                     const { status } = await Location.requestForegroundPermissionsAsync()
                     if (status !== 'granted') {
                       showSnackbar({
-                        message: 'Location permission is required to use GPS',
+                        message: t('createIncident.errors.locationPermission'),
                         type: 'warning'
                       })
                       return
@@ -474,8 +452,8 @@ export default function CreateIncident() {
                   } catch (error) {
                     console.error('Error getting GPS location:', error)
                     showSnackbar({
-                      message: 'Failed to get GPS location',
-                      type: 'error'
+                        message: t('createIncident.errors.gpsLocation'),
+                        type: 'error'
                     })
                   }
                 }}
@@ -489,13 +467,13 @@ export default function CreateIncident() {
           <View style={styles.formGroup}>
             <View style={styles.labelContainer}>
               <Text style={styles.formLabel}>
-                Description <Text style={styles.required}>*</Text>
+                {t('createIncident.description')} <Text style={styles.required}>*</Text>
               </Text>
             </View>
             <View style={styles.textAreaWrapper}>
               <TextInput
                 style={styles.textArea}
-                placeholder="Describe what happened in detail. Include any relevant information about the incident..."
+                placeholder={t('createIncident.placeholders.description')}
                 placeholderTextColor="#9CA3AF"
                 multiline
                 numberOfLines={6}
@@ -505,7 +483,7 @@ export default function CreateIncident() {
               />
               <View style={styles.charCounter}>
                 <Text style={styles.charCounterText}>
-                  {description.length} characters
+                  {description.length} {t('createIncident.characters')}
                 </Text>
               </View>
             </View>
@@ -514,8 +492,8 @@ export default function CreateIncident() {
           {/* Media Upload */}
           <View style={styles.formGroup}>
             <View style={styles.labelContainer}>
-              <Text style={styles.formLabel}>Attachments</Text>
-              <Text style={styles.optionalText}>Optional</Text>
+              <Text style={styles.formLabel}>{t('createIncident.attachments')}</Text>
+              <Text style={styles.optionalText}>{t('createIncident.optional')}</Text>
             </View>
 
             {selectedMedia.length === 0 ? (
@@ -526,9 +504,9 @@ export default function CreateIncident() {
                 <View style={styles.mediaUploadIconContainer}>
                   <Camera size={28} color="#FF6B35" />
                 </View>
-                <Text style={styles.mediaUploadTitle}>Add Photos or Videos</Text>
+                <Text style={styles.mediaUploadTitle}>{t('createIncident.media.addPhotosVideos')}</Text>
                 <Text style={styles.mediaUploadSubtitle}>
-                  Take a photo/video or choose from library
+                  {t('createIncident.media.takeOrChoose')}
                 </Text>
               </TouchableOpacity>
             ) : (
@@ -537,11 +515,11 @@ export default function CreateIncident() {
                   <View style={styles.mediaCount}>
                     <ImageIcon size={16} color="#6B7280" />
                     <Text style={styles.mediaCountText}>
-                      {selectedMedia.length} file{selectedMedia.length !== 1 ? 's' : ''}
+                      {selectedMedia.length} {selectedMedia.length === 1 ? t('createIncident.media.file') : t('createIncident.media.files')}
                     </Text>
                   </View>
                   <TouchableOpacity onPress={showMediaOptions}>
-                    <Text style={styles.addMoreText}>+ Add More</Text>
+                    <Text style={styles.addMoreText}>{t('createIncident.media.addMore')}</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -553,7 +531,7 @@ export default function CreateIncident() {
                       ) : (
                         <View style={styles.videoPreview}>
                           <Video size={32} color="#FFFFFF" />
-                          <Text style={styles.videoText}>Video</Text>
+                          <Text style={styles.videoText}>{t('createIncident.media.video')}</Text>
                         </View>
                       )}
                       <TouchableOpacity
@@ -584,10 +562,10 @@ export default function CreateIncident() {
           {uploading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="small" color="#FFFFFF" />
-              <Text style={styles.submitButtonText}>Submitting...</Text>
+              <Text style={styles.submitButtonText}>{t('createIncident.submitting')}</Text>
             </View>
           ) : (
-            <Text style={styles.submitButtonText}>Submit Report</Text>
+            <Text style={styles.submitButtonText}>{t('createIncident.submitButton')}</Text>
           )}
         </TouchableOpacity>
       </View>

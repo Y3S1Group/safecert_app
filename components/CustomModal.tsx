@@ -12,6 +12,7 @@ interface CustomModalProps {
   saveButtonText?: string;
   cancelButtonText?: string;
   showFooterButtons?: boolean;
+  hideButtons?: boolean; // New
 }
 
 export default function CustomModal({
@@ -23,7 +24,8 @@ export default function CustomModal({
   onCancel,
   saveButtonText = 'Save',
   cancelButtonText = 'Cancel',
-  showFooterButtons = true
+  showFooterButtons = true,
+  hideButtons = false, // New
 }: CustomModalProps) {
   
   const handleCancel = () => {
@@ -63,7 +65,7 @@ export default function CustomModal({
           </ScrollView>
 
           {/* Footer */}
-          {showFooterButtons && (
+          {/* {showFooterButtons && (
             <View style={styles.modalFooter}>
               <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
                 <Text style={styles.cancelButtonText}>{cancelButtonText}</Text>
@@ -71,6 +73,23 @@ export default function CustomModal({
               <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
                 <Text style={styles.saveButtonText}>{saveButtonText}</Text>
               </TouchableOpacity>
+            </View>
+          )} */}
+
+          {/* New */}
+          {/* Footer */}
+          {!hideButtons && (
+            <View style={styles.modalFooter}>
+              {onCancel && (
+                <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
+                  <Text style={styles.cancelButtonText}>{cancelButtonText}</Text>
+                </TouchableOpacity>
+              )}
+              {onSave && (
+                <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+                  <Text style={styles.saveButtonText}>{saveButtonText}</Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
         </View>
@@ -90,7 +109,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
     margin: 20,
-    maxHeight: '80%',
+    maxHeight: '90%',
     width: '90%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -116,7 +135,7 @@ const styles = StyleSheet.create({
   },
   modalBody: {
     padding: 20,
-    maxHeight: 400,
+    //maxHeight: 400,
   },
   modalFooter: {
     flexDirection: 'row',
