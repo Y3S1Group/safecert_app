@@ -1,7 +1,10 @@
 import { Tabs } from 'expo-router';
 import { Home, Award, FileText, GraduationCap, User, FileTextIcon } from 'lucide-react-native';
+import { useLanguage } from '@/providers/languageContext';
 
 export default function TabLayout() {
+    const { t } = useLanguage();
+
     return (
         <Tabs 
             screenOptions={{ 
@@ -36,7 +39,7 @@ export default function TabLayout() {
             <Tabs.Screen 
                 name="index" 
                 options={{
-                    title: 'Home',
+                    title: t('tabs.home'),
                     tabBarIcon: ({ color, size }) => (
                         <Home 
                             size={size || 24} 
@@ -48,7 +51,7 @@ export default function TabLayout() {
             <Tabs.Screen 
                 name="certificates" 
                 options={{
-                    title: 'Certificates',
+                    title: t('tabs.certificates'),
                     tabBarIcon: ({ color, size }) => (
                         <Award 
                             size={size || 24} 
@@ -60,7 +63,7 @@ export default function TabLayout() {
             <Tabs.Screen 
                 name="report" 
                 options={{
-                    title: 'Reports',
+                    title: t('tabs.reports'),
                     tabBarIcon: ({ color, size }) => (
                         <FileTextIcon
                             size={size || 24} 
@@ -72,7 +75,7 @@ export default function TabLayout() {
             <Tabs.Screen 
                 name="training" 
                 options={{
-                    title: 'Training',
+                    title: t('tabs.training'),
                     tabBarIcon: ({ color, size }) => (
                         <GraduationCap 
                             size={size || 24} 
@@ -84,7 +87,7 @@ export default function TabLayout() {
             <Tabs.Screen 
                 name="profile" 
                 options={{
-                    title: 'Profile',
+                    title: t('tabs.profile'),
                     tabBarIcon: ({ color, size }) => (
                         <User 
                             size={size || 24} 

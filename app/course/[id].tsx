@@ -6,21 +6,21 @@ import { doc, getDoc, getDocs, collection, query, where } from 'firebase/firesto
 import { db, auth } from '@/config/firebaseConfig';
 import { Course, Subtopic } from '@/types/course';
 
-import { BookOpen, FileText, ArrowLeft, Play, X, Download, CheckCircle, Info, Trophy,Volume2, VolumeX } from 'lucide-react-native';
+import { BookOpen, FileText, ArrowLeft, Play, X, Download, CheckCircle, Info, Trophy, Volume2, VolumeX } from 'lucide-react-native';
 import { WebView } from 'react-native-webview';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { Linking } from 'react-native';
 import { getViewablePDFUrl } from '@/config/cloudinaryConfig';
 import { generateQuizFromPDF } from '@/config/geminiConfig';
-import * as Speech from 'expo-speech'; // New
-import { useLanguage } from '@/providers/languageContext'; // New
+import * as Speech from 'expo-speech';
+import { useLanguage } from '@/providers/languageContext';
 
 export default function CourseDetail() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-  const { language } = useLanguage(); // New
-  console.log('🎤 Current TTS Language:', language); // To Check
+  const { language, t } = useLanguage();
+  console.log('🎤 Current TTS Language:', language);
 
   const [course, setCourse] = useState<Course | null>(null);
   const [subtopics, setSubtopics] = useState<Subtopic[]>([]);
@@ -75,7 +75,7 @@ export default function CourseDetail() {
       onStopped: () => setSpeakingItem(null),
       onError: () => {
         setSpeakingItem(null);
-        Alert.alert('Error', 'Text-to-speech failed');
+        Alert.alert(t('common.error'), t('courseDetail.ttsError'));
       }
     });
   };
@@ -123,7 +123,7 @@ export default function CourseDetail() {
         }
       } catch (error) {
         console.error('Error loading course:', error);
-        Alert.alert('Error', 'Failed to load course details.');
+        Alert.alert(t('common.error'), t('courseDetail.loadError'));
       } finally {
         setLoading(false);
       }
@@ -218,18 +218,18 @@ export default function CourseDetail() {
       
       if (downloadResult.status === 200) {
         Alert.alert(
-          'Download Complete',
-          'PDF downloaded successfully. Would you like to share it?',
+          t('courseDetail.downloadComplete'),
+          t('courseDetail.downloadCompleteMessage'),
           [
-            { text: 'Cancel', style: 'cancel' },
+            { text: t('common.cancel'), style: 'cancel' },
             {
-              text: 'Share',
+              text: t('courseDetail.share'),
               onPress: async () => {
                 const sharingAvailable = await Sharing.isAvailableAsync();
                 if (sharingAvailable) {
                   await Sharing.shareAsync(downloadResult.uri);
                 } else {
-                  Alert.alert('Info', 'Sharing is not available on this device');
+                  Alert.alert(t('common.info'), t('courseDetail.sharingNotAvailable'));
                 }
               }
             }
@@ -238,7 +238,7 @@ export default function CourseDetail() {
       }
     } catch (error) {
       console.error('Error downloading PDF:', error);
-      Alert.alert('Error', 'Failed to download PDF. Opening in browser instead...');
+      Alert.alert(t('common.error'), t('courseDetail.downloadError'));
       if (selectedPDF) {
         await Linking.openURL(selectedPDF.url);
       }
@@ -260,7 +260,7 @@ export default function CourseDetail() {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#FF6B35" />
-        <Text style={styles.loadingText}>Loading course...</Text>
+        <Text style={styles.loadingText}>{t('courseDetail.loadingCourse')}</Text>
       </View>
     );
   }
@@ -269,9 +269,9 @@ export default function CourseDetail() {
     return (
       <View style={styles.center}>
         <BookOpen size={48} color="#D1D5DB" />
-        <Text style={styles.emptyTitle}>Course not found</Text>
+        <Text style={styles.emptyTitle}>{t('courseDetail.notFound')}</Text>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Text style={styles.backButtonText}>Go Back</Text>
+          <Text style={styles.backButtonText}>{t('common.goBack')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -302,7 +302,7 @@ export default function CourseDetail() {
           <View style={styles.courseHeader}>
             <View style={styles.courseBadge}>
               <BookOpen size={16} color="#FF6B35" />
-              <Text style={styles.courseBadgeText}>Course</Text>
+              <Text style={styles.courseBadgeText}>{t('courseDetail.course')}</Text>
               <TouchableOpacity 
                 onPress={() => setGuidelinesVisible(true)} 
                 style={styles.guidelinesButtonSmall}
@@ -313,7 +313,7 @@ export default function CourseDetail() {
           </View>
           <Text style={styles.description}>{course.description}</Text>
           
-          {/* TTS Button for Course Info - NEW */}
+          {/* TTS Button for Course Info */}
           <TouchableOpacity 
             style={styles.ttsButton}
             onPress={speakCourseInfo}
@@ -324,14 +324,14 @@ export default function CourseDetail() {
               <Volume2 size={16} color="#6B7280" />
             )}
             <Text style={[styles.ttsButtonText, isSpeakingCourse && styles.ttsButtonTextActive]}>
-              {isSpeakingCourse ? 'Stop Reading' : 'Read Course Info'}
+              {isSpeakingCourse ? t('courseDetail.stopReading') : t('courseDetail.readCourseInfo')}
             </Text>
           </TouchableOpacity>
 
           {/* Progress Bar */}
           <View style={styles.progressSection}>
             <View style={styles.progressHeader}>
-              <Text style={styles.progressTitle}>Your Progress</Text>
+              <Text style={styles.progressTitle}>{t('courseDetail.yourProgress')}</Text>
               <Text style={styles.progressPercentage}>{Math.round(progressPercentage)}%</Text>
             </View>
             
@@ -340,14 +340,14 @@ export default function CourseDetail() {
             </View>
             
             <Text style={styles.progressSubtext}>
-              {userProgress.length} of {subtopics.length} subtopics completed
+              {userProgress.length} {t('courseDetail.of')} {subtopics.length} {t('courseDetail.subtopicsCompleted')}
             </Text>
           </View>
         </View>
 
         {/* Section Header */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Course Content</Text>
+          <Text style={styles.sectionTitle}>{t('courseDetail.courseContent')}</Text>
           <View style={styles.sectionBadge}>
             <Text style={styles.sectionBadgeText}>{subtopics.length}</Text>
           </View>
@@ -357,7 +357,7 @@ export default function CourseDetail() {
         {subtopics.length === 0 ? (
           <View style={styles.emptyState}>
             <FileText size={40} color="#D1D5DB" />
-            <Text style={styles.emptyText}>No subtopics available yet.</Text>
+            <Text style={styles.emptyText}>{t('courseDetail.noSubtopics')}</Text>
           </View>
         ) : (
           subtopics.map((sub, index) => {
@@ -366,11 +366,10 @@ export default function CourseDetail() {
             const isSpeakingSubtopic = speakingItem === `subtopic-${index}`;
             const quizScore = quizScores.get(index);
 
-            
             return (
               <View key={index} style={styles.subtopicCard}>
                 <View style={styles.subtopicHeader}>
-                  <Text style={styles.subtopicNumber}>Topic {index + 1}</Text>
+                  <Text style={styles.subtopicNumber}>{t('courseDetail.topic')} {index + 1}</Text>
                   {quizScore !== undefined && (
                     <View style={styles.scoreBadge}>
                       <Trophy size={12} color="#F59E0B" />
@@ -380,7 +379,7 @@ export default function CourseDetail() {
                   {isCompleted && (
                     <View style={styles.completedBadge}>
                       <CheckCircle size={16} color="#10B981" />
-                      <Text style={styles.completedText}>Completed</Text>
+                      <Text style={styles.completedText}>{t('courseDetail.completed')}</Text>
                     </View>
                   )}
                 </View>
@@ -390,7 +389,7 @@ export default function CourseDetail() {
                   <Text style={styles.subDesc}>{sub.description}</Text>
                 )}
 
-                {/* TTS Button for Subtopic - NEW */}
+                {/* TTS Button for Subtopic */}
                 <TouchableOpacity 
                   style={styles.ttsButtonSmall}
                   onPress={() => speakSubtopic(index, sub.title, sub.description)}
@@ -401,14 +400,14 @@ export default function CourseDetail() {
                     <Volume2 size={14} color="#6B7280" />
                   )}
                   <Text style={[styles.ttsButtonTextSmall, isSpeakingSubtopic && styles.ttsButtonTextActive]}>
-                    {isSpeakingSubtopic ? 'Stop' : 'Listen'}
+                    {isSpeakingSubtopic ? t('courseDetail.stop') : t('courseDetail.listen')}
                   </Text>
                 </TouchableOpacity>
 
                 {/* PDFs */}
                 {sub.pdfs && Object.keys(sub.pdfs).some(key => sub.pdfs[key as keyof typeof sub.pdfs]) && (
                   <>
-                    <Text style={styles.materialsLabel}>Study Materials</Text>
+                    <Text style={styles.materialsLabel}>{t('courseDetail.studyMaterials')}</Text>
                     <View style={styles.pdfRow}>
                       {/* Fixed order: English, Sinhala, Tamil */}
                       {(['english', 'sinhala', 'tamil'] as const).map((lang) => {
@@ -437,7 +436,7 @@ export default function CourseDetail() {
                   }}
                 >
                   <Play size={14} color="#FFF" />
-                  <Text style={styles.quizText}>Generate Quiz</Text>
+                  <Text style={styles.quizText}>{t('courseDetail.generateQuiz')}</Text>
                 </TouchableOpacity>
               </View>
             );
@@ -504,9 +503,9 @@ export default function CourseDetail() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.languageModal}>
-            <Text style={styles.languageModalTitle}>Select Quiz Language</Text>
+            <Text style={styles.languageModalTitle}>{t('courseDetail.selectQuizLanguage')}</Text>
             <Text style={styles.languageModalSubtitle}>
-              Choose the language for your quiz questions
+              {t('courseDetail.selectQuizLanguageDesc')}
             </Text>
 
             {(['english', 'sinhala', 'tamil'] as const).map((lang) => {
@@ -538,9 +537,9 @@ export default function CourseDetail() {
                     } catch (error) {
                       console.error('Quiz generation error:', error);
                       Alert.alert(
-                        'Error', 
-                        'Failed to generate quiz. Please check your internet connection and try again.',
-                        [{ text: 'OK' }]
+                        t('common.error'), 
+                        t('courseDetail.quizGenerationError'),
+                        [{ text: t('common.ok') }]
                       );
                     } finally {
                       setGeneratingQuiz(false);
@@ -554,7 +553,7 @@ export default function CourseDetail() {
                     {lang === 'english' ? 'English' : lang === 'sinhala' ? 'සිංහල' : 'தமிழ்'}
                   </Text>
                   {!hasPDF && (
-                    <Text style={styles.noPDFText}>No PDF available</Text>
+                    <Text style={styles.noPDFText}>{t('courseDetail.noPDFAvailable')}</Text>
                   )}
                 </TouchableOpacity>
               );
@@ -565,13 +564,13 @@ export default function CourseDetail() {
               onPress={() => setQuizModalVisible(false)}
               disabled={generatingQuiz}
             >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+              <Text style={styles.cancelButtonText}>{t('common.cancel')}</Text>
             </TouchableOpacity>
 
             {generatingQuiz && (
               <View style={styles.generatingOverlay}>
                 <ActivityIndicator size="large" color="#FF6B35" />
-                <Text style={styles.generatingText}>Generating quiz...</Text>
+                <Text style={styles.generatingText}>{t('courseDetail.generatingQuiz')}</Text>
               </View>
             )}
           </View>
@@ -588,7 +587,7 @@ export default function CourseDetail() {
         <View style={styles.modalOverlay}>
           <View style={styles.guidelinesModal}>
             <View style={styles.guidelinesHeader}>
-              <Text style={styles.guidelinesTitle}>Course Guidelines</Text>
+              <Text style={styles.guidelinesTitle}>{t('courseDetail.guidelines')}</Text>
               <TouchableOpacity 
                 onPress={() => setGuidelinesVisible(false)}
                 style={styles.guidelinesCloseButton}
@@ -599,7 +598,7 @@ export default function CourseDetail() {
 
             <ScrollView style={styles.guidelinesContent} showsVerticalScrollIndicator={false}>
               <Text style={styles.guidelinesSubtitle}>
-                How to Complete This Course
+                {t('courseDetail.howToComplete')}
               </Text>
 
               <View style={styles.guidelineItem}>
@@ -607,9 +606,9 @@ export default function CourseDetail() {
                   <Text style={styles.guidelineNumberText}>1</Text>
                 </View>
                 <View style={styles.guidelineText}>
-                  <Text style={styles.guidelineTitle}>Study the Materials</Text>
+                  <Text style={styles.guidelineTitle}>{t('courseDetail.guideline1Title')}</Text>
                   <Text style={styles.guidelineDesc}>
-                    Read the PDF in each subtopic (Available in English, Sinhala, or Tamil)
+                    {t('courseDetail.guideline1Desc')}
                   </Text>
                 </View>
               </View>
@@ -619,9 +618,9 @@ export default function CourseDetail() {
                   <Text style={styles.guidelineNumberText}>2</Text>
                 </View>
                 <View style={styles.guidelineText}>
-                  <Text style={styles.guidelineTitle}>Take the Quiz</Text>
+                  <Text style={styles.guidelineTitle}>{t('courseDetail.guideline2Title')}</Text>
                   <Text style={styles.guidelineDesc}>
-                    Generate and complete the AI-powered quiz for each subtopic
+                    {t('courseDetail.guideline2Desc')}
                   </Text>
                 </View>
               </View>
@@ -631,9 +630,9 @@ export default function CourseDetail() {
                   <Text style={styles.guidelineNumberText}>3</Text>
                 </View>
                 <View style={styles.guidelineText}>
-                  <Text style={styles.guidelineTitle}>Pass with 70%</Text>
+                  <Text style={styles.guidelineTitle}>{t('courseDetail.guideline3Title')}</Text>
                   <Text style={styles.guidelineDesc}>
-                    Score at least 7 out of 10 questions to complete each subtopic
+                    {t('courseDetail.guideline3Desc')}
                   </Text>
                 </View>
               </View>
@@ -643,16 +642,16 @@ export default function CourseDetail() {
                   <Text style={styles.guidelineNumberText}>4</Text>
                 </View>
                 <View style={styles.guidelineText}>
-                  <Text style={styles.guidelineTitle}>Complete All Topics</Text>
+                  <Text style={styles.guidelineTitle}>{t('courseDetail.guideline4Title')}</Text>
                   <Text style={styles.guidelineDesc}>
-                    Finish all {subtopics.length} subtopics to earn your certificate
+                    {t('courseDetail.guideline4DescPart1')} {subtopics.length} {t('courseDetail.guideline4DescPart2')}
                   </Text>
                 </View>
               </View>
 
               <View style={styles.guidelineTip}>
                 <Text style={styles.guidelineTipText}>
-                  Tip: You can retake quizzes to improve your score. Your highest score will be saved.
+                  {t('courseDetail.guidelineTip')}
                 </Text>
               </View>
             </ScrollView>
@@ -661,7 +660,7 @@ export default function CourseDetail() {
               style={styles.guidelinesButton}
               onPress={() => setGuidelinesVisible(false)}
             >
-              <Text style={styles.guidelinesButtonText}>Got It!</Text>
+              <Text style={styles.guidelinesButtonText}>{t('courseDetail.gotIt')}</Text>
             </TouchableOpacity>
           </View>
         </View>

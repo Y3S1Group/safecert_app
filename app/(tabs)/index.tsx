@@ -46,9 +46,9 @@ const SAFETY_TIPS = [
   "If you're unsure about a task, ask for help. It's better to be safe than sorry.",
 ];
 
-const getTipOfTheDay = () => {
+const getTipOfTheDay = (tips: string[]) => {
   const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
-  return SAFETY_TIPS[dayOfYear % SAFETY_TIPS.length];
+  return tips[dayOfYear % tips.length];
 };
 
 interface UserInfo {
@@ -77,7 +77,7 @@ interface Recommendation {
 
 export default function Home() {
   const router = useRouter();
-  const { t } = useLanguage(); // Added
+  const { t, language } = useLanguage(); // Added
 
   const { showAlert } = useAlert();
 
@@ -147,6 +147,12 @@ export default function Home() {
     }
   };
 
+  const translations = {
+    en: require('@/locales/en.json'),
+    si: require('@/locales/si.json'),
+    ta: require('@/locales/ta.json'),
+  };
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user && user.email) {
@@ -156,10 +162,15 @@ export default function Home() {
     return () => unsubscribe();
   }, []);
 
-
   useEffect(() => {
-    setTipOfTheDay(getTipOfTheDay());
-  }, []);
+    const tips = translations[language as 'en' | 'si' | 'ta']?.home?.safetyTip?.tips || [];
+
+    if (tips.length > 0) {
+      const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
+      const selectedTip = tips[dayOfYear % tips.length];
+      setTipOfTheDay(selectedTip);
+    }
+  }, [language]);
 
   useEffect(() => {
     if (!auth.currentUser) return;
@@ -451,7 +462,7 @@ export default function Home() {
               <View style={[styles.headerTipContent, { opacity: fadeAnim }]}>
                 <Text style={styles.headerTipTitle}>{t('home.safetyTip.title')}</Text>
                 <Text style={styles.headerTipText}>
-                  {tipOfTheDay}
+                  {tipOfTheDay}                                                       {/* ?? */}
                 </Text>
               </View>
             </View>
@@ -488,7 +499,7 @@ export default function Home() {
                 </View>
                 <View style={styles.statContent}>
                   <Text style={styles.statNumber}>{stats.pendingTrainings}</Text>
-                  <Text style={styles.statLabel}>{t('home.stats.pendingTrainings')</Text>
+                  <Text style={styles.statLabel}>{t('home.stats.pendingTrainings')}</Text>
                 </View>
               </View>
             </View>

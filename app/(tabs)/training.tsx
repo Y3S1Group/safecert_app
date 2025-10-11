@@ -6,7 +6,8 @@ import React, { useEffect, useState } from 'react'
 import { ActivityIndicator, Alert, FlatList, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useSnackbar } from '@/contexts/SnackbarContext'  
-import { sendNotification } from '@/utils/notifications';
+import { sendNotification } from '@/utils/notifications'
+import { useLanguage } from '@/providers/languageContext' // NEW
 
 interface Course {
   id: string
@@ -21,6 +22,7 @@ interface Course {
 
 export default function Training() {
   const router = useRouter()
+  const { t } = useLanguage() // NEW
   const [activeTab, setActiveTab] = useState<'view' | 'create' | 'analytics'>('view')
   const [courses, setCourses] = useState<Course[]>([])
   const [filteredCourses, setFilteredCourses] = useState<Course[]>([])
@@ -265,42 +267,42 @@ export default function Training() {
   };
 
   const handleDeleteCourse = async (courseId: string) => {
-  Alert.alert(
-    'Delete Course',
-    'Are you sure you want to delete this course? This action cannot be undone.',
-    [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await deleteDoc(doc(db, 'courses', courseId))
-            showSnackbar({
-              message: 'Course deleted successfully',
-              type: 'success',
-              duration: 3000
-            })
-          } catch (error) {
-            console.error('Error deleting course:', error)
-            showSnackbar({
-              message: 'Failed to delete course',
-              type: 'error',
-              duration: 3000
-            })
+    Alert.alert(
+      t('trainingPage.deleteCourse'),
+      t('trainingPage.deleteConfirm'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.delete'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteDoc(doc(db, 'courses', courseId))
+              showSnackbar({
+                message: t('trainingPage.deleteSuccess'),
+                type: 'success',
+                duration: 3000
+              })
+            } catch (error) {
+              console.error('Error deleting course:', error)
+              showSnackbar({
+                message: t('trainingPage.deleteError'),
+                type: 'error',
+                duration: 3000
+              })
+            }
           }
         }
-      }
-    ]
-  )
-}
+      ]
+    )
+  }
 
   // Update handleEnrollment to use email
   const handleEnrollment = async (courseId: string, courseTitle: string) => {
     const user = auth.currentUser;
     if (!user || !user.email) {
       showSnackbar({
-        message: 'Please log in to enroll in courses',
+        message: t('trainingPage.loginToEnroll'),
         type: 'error',
         duration: 3000
       });
@@ -316,7 +318,7 @@ export default function Training() {
           courses: arrayRemove(courseId)
         });
         showSnackbar({
-          message: `Successfully unenrolled from "${courseTitle}"`,
+          message: `${t('trainingPage.unenrollSuccess')} "${courseTitle}"`,
           type: 'success',
           duration: 3000
         });
@@ -327,7 +329,7 @@ export default function Training() {
         });
         
         showSnackbar({
-          message: `Successfully enrolled in "${courseTitle}"`,
+          message: `${t('trainingPage.enrollSuccess')} "${courseTitle}"`,
           type: 'success',
           duration: 3000
         });
@@ -361,7 +363,7 @@ export default function Training() {
     } catch (error) {
       console.error('Error updating enrollment:', error);
       showSnackbar({
-        message: 'Failed to update enrollment. Please try again.',
+        message: t('trainingPage.enrollmentError'),
         type: 'error',
         duration: 3000
       });
@@ -369,465 +371,463 @@ export default function Training() {
   };
 
   const renderCourseCard = ({ item, mode = 'view' }: { item: Course; mode?: 'view' | 'create' }) => {
-  const isEnrolled = enrolledCourses.has(item.id)
-  const isOwner = auth.currentUser?.uid === item.createdBy
-  
-  const progress = courseProgress.get(item.id)
-  const progressPercentage = progress && progress.total > 0 
-    ? (progress.completed / progress.total) * 100 
-    : 0
-  const isCompleted = progressPercentage === 100
+    const isEnrolled = enrolledCourses.has(item.id)
+    const isOwner = auth.currentUser?.uid === item.createdBy
+    
+    const progress = courseProgress.get(item.id)
+    const progressPercentage = progress && progress.total > 0 
+      ? (progress.completed / progress.total) * 100 
+      : 0
+    const isCompleted = progressPercentage === 100
 
-  return (
-    <TouchableOpacity 
-      style={styles.courseCard}
-      onPress={() => {
-        if (mode === 'view' && !isEnrolled && !isOwner) {
-          showSnackbar({
-            message: 'Please enroll in this course to view its content',
-            type: 'warning',
-            duration: 3000
-          })
-          return
-        }
-        router.push(`/course/${item.id}` as any)
-      }}
-      activeOpacity={0.7}
-    >
-      <View style={styles.accentBar} />
-      
-      <View style={styles.cardContent}>
-        <View style={styles.cardHeader}>
-          <View style={styles.badge}>
-            <BookOpen size={14} color="#FF6B35" />
-            <Text style={styles.badgeText}>Course</Text>
-            {isCompleted && isEnrolled && (
-            <View style={styles.completedBadgeCard}>
-              <Text style={styles.completedBadgeText}>✓ Completed</Text>
+    return (
+      <TouchableOpacity 
+        style={styles.courseCard}
+        onPress={() => {
+          if (mode === 'view' && !isEnrolled && !isOwner) {
+            showSnackbar({
+              message: t('trainingPage.enrollToView'),
+              type: 'warning',
+              duration: 3000
+            })
+            return
+          }
+          router.push(`/course/${item.id}` as any)
+        }}
+        activeOpacity={0.7}
+      >
+        <View style={styles.accentBar} />
+        
+        <View style={styles.cardContent}>
+          <View style={styles.cardHeader}>
+            <View style={styles.badge}>
+              <BookOpen size={14} color="#FF6B35" />
+              <Text style={styles.badgeText}>{t('trainingPage.course')}</Text>
+              {isCompleted && isEnrolled && (
+                <View style={styles.completedBadgeCard}>
+                  <Text style={styles.completedBadgeText}>✓ {t('trainingPage.completed')}</Text>
+                </View>
+              )}
             </View>
-          )}
           </View>
-        </View>
 
-        <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
+          <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
 
-        <Text style={styles.descriptionText} numberOfLines={3}>
-          {item.description}
-        </Text>
+          <Text style={styles.descriptionText} numberOfLines={3}>
+            {item.description}
+          </Text>
 
-        <View style={styles.cardFooter}>
-          <View style={styles.metaContainer}>
-            <Clock size={12} color="#9CA3AF" />
-            <Text style={styles.metaText}>
-              {item.createdAt?.toDate?.()?.toLocaleDateString('en-US', { 
-                month: 'short', 
-                day: 'numeric',
-                year: 'numeric'
-              }) || 'Recent'}
-            </Text>
-          </View>
-          
-          {item.subtopicsCount && (
-            <View style={styles.attachmentBadge}>
-              <FileText size={12} color="#6B7280" />
-              <Text style={styles.attachmentCount}>
-                {item.subtopicsCount} {item.subtopicsCount === 1 ? 'topic' : 'topics'}
+          <View style={styles.cardFooter}>
+            <View style={styles.metaContainer}>
+              <Clock size={12} color="#9CA3AF" />
+              <Text style={styles.metaText}>
+                {item.createdAt?.toDate?.()?.toLocaleDateString('en-US', { 
+                  month: 'short', 
+                  day: 'numeric',
+                  year: 'numeric'
+                }) || t('trainingPage.recent')}
               </Text>
             </View>
-          )}
-        </View>
-
-        {/* Progress bar - only show if enrolled and not completed */}
-        {isEnrolled && !isCompleted && progress && progress.total > 0 && (
-          <View style={styles.progressSection}>
-            <View style={styles.progressInfo}>
-              <Text style={styles.progressText}>Progress</Text>
-              <Text style={styles.progressPercentage}>{Math.round(progressPercentage)}%</Text>
-            </View>
-            <View style={styles.progressBarCard}>
-              <View style={[styles.progressBarFillCard, { width: `${progressPercentage}%` }]} />
-            </View>
-            <Text style={styles.progressSubtext}>
-              {progress.completed} of {progress.total} topics completed
-            </Text>
-          </View>
-        )}
-
-        {/* Different actions based on mode */}
-        {mode === 'view' ? (
-          <View style={styles.cardActions}>
-            <TouchableOpacity 
-              style={[
-                styles.enrollButton,
-                isEnrolled && styles.enrolledButton
-              ]}
-              onPress={(e) => {
-                e.stopPropagation()
-                handleEnrollment(item.id, item.title)
-              }}
-            >
-              <Text style={[
-                styles.enrollButtonText,
-                isEnrolled && styles.enrolledButtonText
-              ]}>
-                {isEnrolled ? '✓ Enrolled' : 'Enroll'}
-              </Text>
-            </TouchableOpacity>
             
-            {isEnrolled && (
-              <TouchableOpacity 
-                style={styles.viewButton}
-                onPress={() => router.push(`/course/${item.id}`)}
-              >
-                <Eye size={16} color="#FFFFFF" />
-                <Text style={styles.viewButtonText}>View</Text>
-              </TouchableOpacity>
+            {item.subtopicsCount && (
+              <View style={styles.attachmentBadge}>
+                <FileText size={12} color="#6B7280" />
+                <Text style={styles.attachmentCount}>
+                  {item.subtopicsCount} {item.subtopicsCount === 1 ? t('trainingPage.topic') : t('trainingPage.topics')}
+                </Text>
+              </View>
             )}
           </View>
-        ) : (
-          <View style={styles.cardActions}>
-            <TouchableOpacity 
-              style={styles.actionButton}
-              onPress={() => router.push(`/course/${item.id}`)}
-            >
-              <Eye size={16} color="#6B7280" />
-              <Text style={styles.actionText}>View</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.actionButton}
-              onPress={(e) => {
-                e.stopPropagation()
-                router.push(`/course/edit/${item.id}` as any)
-              }}
-            >
-              <Edit size={16} color="#6B7280" />
-              <Text style={styles.actionText}>Edit</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.actionButton, styles.deleteButton]}
-              onPress={(e) => {
-                e.stopPropagation()
-                handleDeleteCourse(item.id)
-              }}
-            >
-              <Trash2 size={16} color="#EF4444" />
-              <Text style={[styles.actionText, styles.deleteText]}>Delete</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-    </TouchableOpacity>
-  )
-}
+
+          {/* Progress bar - only show if enrolled and not completed */}
+          {isEnrolled && !isCompleted && progress && progress.total > 0 && (
+            <View style={styles.progressSection}>
+              <View style={styles.progressInfo}>
+                <Text style={styles.progressText}>{t('trainingPage.progress')}</Text>
+                <Text style={styles.progressPercentage}>{Math.round(progressPercentage)}%</Text>
+              </View>
+              <View style={styles.progressBarCard}>
+                <View style={[styles.progressBarFillCard, { width: `${progressPercentage}%` }]} />
+              </View>
+              <Text style={styles.progressSubtext}>
+                {progress.completed} {t('trainingPage.of')} {progress.total} {t('trainingPage.topicsCompleted')}
+              </Text>
+            </View>
+          )}
+
+          {/* Different actions based on mode */}
+          {mode === 'view' ? (
+            <View style={styles.cardActions}>
+              <TouchableOpacity 
+                style={[
+                  styles.enrollButton,
+                  isEnrolled && styles.enrolledButton
+                ]}
+                onPress={(e) => {
+                  e.stopPropagation()
+                  handleEnrollment(item.id, item.title)
+                }}
+              >
+                <Text style={[
+                  styles.enrollButtonText,
+                  isEnrolled && styles.enrolledButtonText
+                ]}>
+                  {isEnrolled ? `✓ ${t('trainingPage.enrolled')}` : t('trainingPage.enroll')}
+                </Text>
+              </TouchableOpacity>
+              
+              {isEnrolled && (
+                <TouchableOpacity 
+                  style={styles.viewButton}
+                  onPress={() => router.push(`/course/${item.id}`)}
+                >
+                  <Eye size={16} color="#FFFFFF" />
+                  <Text style={styles.viewButtonText}>{t('trainingPage.view')}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : (
+            <View style={styles.cardActions}>
+              <TouchableOpacity 
+                style={styles.actionButton}
+                onPress={() => router.push(`/course/${item.id}`)}
+              >
+                <Eye size={16} color="#6B7280" />
+                <Text style={styles.actionText}>{t('trainingPage.view')}</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.actionButton}
+                onPress={(e) => {
+                  e.stopPropagation()
+                  router.push(`/course/edit/${item.id}` as any)
+                }}
+              >
+                <Edit size={16} color="#6B7280" />
+                <Text style={styles.actionText}>{t('common.edit')}</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.actionButton, styles.deleteButton]}
+                onPress={(e) => {
+                  e.stopPropagation()
+                  handleDeleteCourse(item.id)
+                }}
+              >
+                <Trash2 size={16} color="#EF4444" />
+                <Text style={[styles.actionText, styles.deleteText]}>{t('common.delete')}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
+    )
+  }
 
   const renderTabContent = () => {
     switch (activeTab) {
-  // In the 'view' case, update FlatList:
-  case 'view':
-    return (
-      <View style={styles.listContainer}>
-        <View style={styles.searchWrapper}>
-          <View style={styles.searchContainer}>
-            <Search size={18} color="#9CA3AF" />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search courses by title or description..."
-              placeholderTextColor="#9CA3AF"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Text style={styles.clearButton}>×</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-
-        {searchQuery.length > 0 && (
-          <View style={styles.resultsHeader}>
-            <Text style={styles.resultsText}>
-              {filteredCourses.length} {filteredCourses.length === 1 ? 'result' : 'results'} found
-            </Text>
-          </View>
-        )}
-
-        <FlatList
-          data={filteredCourses}
-          renderItem={({ item }) => renderCourseCard({ item, mode: 'view' })}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View style={styles.emptyStateContainer}>
-              <View style={styles.iconCircle}>
-                <BookOpen size={32} color="#D1D5DB" />
+      case 'view':
+        return (
+          <View style={styles.listContainer}>
+            <View style={styles.searchWrapper}>
+              <View style={styles.searchContainer}>
+                <Search size={18} color="#9CA3AF" />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder={t('trainingPage.searchPlaceholder')}
+                  placeholderTextColor="#9CA3AF"
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchQuery('')}>
+                    <Text style={styles.clearButton}>×</Text>
+                  </TouchableOpacity>
+                )}
               </View>
-              <Text style={styles.emptyStateTitle}>
-                {searchQuery ? 'No courses found' : 'No training courses'}
-              </Text>
-              <Text style={styles.emptyStateDescription}>
-                {searchQuery 
-                  ? 'Try adjusting your search terms' 
-                  : 'No courses available yet'}
-              </Text>
             </View>
-          }
-        />
-      </View>
-    )
 
-  // Update the 'create' case to show only user's courses:
-  case 'create':
-    return (
-      <View style={styles.listContainer}>
-        <View style={styles.createHeader}>
-          <Text style={styles.createTitle}>My Courses</Text>
-          <TouchableOpacity
-            style={styles.createButton}
-            onPress={() => router.push('/course/new')}
-          >
-            <Plus size={20} color="#FFFFFF" />
-            <Text style={styles.createButtonText}>New Course</Text>
-          </TouchableOpacity>
-        </View>
-
-        <FlatList
-          data={myCourses}
-          renderItem={({ item }) => renderCourseCard({ item, mode: 'create' })}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View style={styles.emptyStateContainer}>
-              <View style={styles.iconCircle}>
-                <Plus size={32} color="#FF6B35" />
+            {searchQuery.length > 0 && (
+              <View style={styles.resultsHeader}>
+                <Text style={styles.resultsText}>
+                  {filteredCourses.length} {filteredCourses.length === 1 ? t('trainingPage.result') : t('trainingPage.results')} {t('trainingPage.found')}
+                </Text>
               </View>
-              <Text style={styles.emptyStateTitle}>Create Your First Course</Text>
-              <Text style={styles.emptyStateDescription}>
-                Build comprehensive training courses with multiple subtopics and multilingual support
-              </Text>
+            )}
+
+            <FlatList
+              data={filteredCourses}
+              renderItem={({ item }) => renderCourseCard({ item, mode: 'view' })}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={false}
+              ListEmptyComponent={
+                <View style={styles.emptyStateContainer}>
+                  <View style={styles.iconCircle}>
+                    <BookOpen size={32} color="#D1D5DB" />
+                  </View>
+                  <Text style={styles.emptyStateTitle}>
+                    {searchQuery ? t('trainingPage.noCoursesFound') : t('trainingPage.noTrainingCourses')}
+                  </Text>
+                  <Text style={styles.emptyStateDescription}>
+                    {searchQuery 
+                      ? t('trainingPage.adjustSearch') 
+                      : t('trainingPage.noCoursesAvailable')}
+                  </Text>
+                </View>
+              }
+            />
+          </View>
+        )
+
+      case 'create':
+        return (
+          <View style={styles.listContainer}>
+            <View style={styles.createHeader}>
+              <Text style={styles.createTitle}>{t('trainingPage.myCourses')}</Text>
               <TouchableOpacity
-                style={styles.primaryButton}
+                style={styles.createButton}
                 onPress={() => router.push('/course/new')}
               >
                 <Plus size={20} color="#FFFFFF" />
-                <Text style={styles.primaryButtonText}>Create Training Course</Text>
+                <Text style={styles.createButtonText}>{t('trainingPage.newCourse')}</Text>
               </TouchableOpacity>
             </View>
-          }
-        />
-      </View>
-    )
 
-        case 'analytics':
-          if (analyticsLoading) {
-            return (
-              <View style={styles.loadingContainer}>
-                <View style={styles.loadingIconContainer}>
-                  <Activity size={40} color="#FF6B35" />
-                </View>
-                <Text style={styles.loadingText}>Analyzing data...</Text>
-                <Text style={styles.loadingSubtext}>Please wait</Text>
-              </View>
-            );
-          }
-
-          if (!analyticsData || analyticsData.totalCoursesCreated === 0) {
-            return (
-              <View style={styles.emptyStateContainer}>
-                <View style={styles.iconCircle}>
-                  <TrendingUp size={32} color="#D1D5DB" />
-                </View>
-                <Text style={styles.emptyStateTitle}>No Analytics Available</Text>
-                <Text style={styles.emptyStateDescription}>
-                  Create courses to see performance analytics
-                </Text>
-              </View>
-            );
-          }
-
-          return (
-            <ScrollView 
-              style={styles.listContainer}
-              contentContainerStyle={styles.analyticsContent}
+            <FlatList
+              data={myCourses}
+              renderItem={({ item }) => renderCourseCard({ item, mode: 'create' })}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}
-            >
-              {/* Overview Cards */}
-              <View style={styles.statsGrid}>
-                <View style={styles.statCard}>
-                  <View style={[styles.iconCircle, { backgroundColor: '#DBEAFE' }]}>
-                    <BookOpen size={20} color="#3B82F6" />
+              ListEmptyComponent={
+                <View style={styles.emptyStateContainer}>
+                  <View style={styles.iconCircle}>
+                    <Plus size={32} color="#FF6B35" />
                   </View>
-                  <Text style={styles.statValue}>{analyticsData.totalCoursesCreated}</Text>
-                  <Text style={styles.statLabel}>Courses Created</Text>
+                  <Text style={styles.emptyStateTitle}>{t('trainingPage.createFirstCourse')}</Text>
+                  <Text style={styles.emptyStateDescription}>
+                    {t('trainingPage.buildCourses')}
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.primaryButton}
+                    onPress={() => router.push('/course/new')}
+                  >
+                    <Plus size={20} color="#FFFFFF" />
+                    <Text style={styles.primaryButtonText}>{t('trainingPage.createTrainingCourse')}</Text>
+                  </TouchableOpacity>
                 </View>
-
-                <View style={styles.statCard}>
-                  <View style={[styles.iconCircle, { backgroundColor: '#FCE7F3' }]}>
-                    <Users size={20} color="#EC4899" />
-                  </View>
-                  <Text style={styles.statValue}>{analyticsData.totalEnrollments}</Text>
-                  <Text style={styles.statLabel}>Total Enrollments</Text>
-                </View>
-
-                <View style={styles.statCard}>
-                  <View style={[styles.iconCircle, { backgroundColor: '#D1FAE5' }]}>
-                    <CheckCircle size={20} color="#10B981" />
-                  </View>
-                  <Text style={styles.statValue}>{analyticsData.totalCompletions}</Text>
-                  <Text style={styles.statLabel}>Completions</Text>
-                </View>
-
-                <View style={styles.statCard}>
-                  <View style={[styles.iconCircle, { backgroundColor: '#FEF3C7' }]}>
-                    <Award size={20} color="#F59E0B" />
-                  </View>
-                  <Text style={styles.statValue}>{Math.round(analyticsData.averageQuizScore)}%</Text>
-                  <Text style={styles.statLabel}>Avg Quiz Score</Text>
-                </View>
-              </View>
-
-              {/* Overall Performance */}
-              <View style={styles.analyticsSection}>
-                <Text style={styles.analyticsSectionTitle}>Overall Performance</Text>
-                <View style={styles.performanceCard}>
-                  <View style={styles.performanceRow}>
-                    <Text style={styles.performanceLabel}>Completion Rate</Text>
-                    <Text style={[styles.performanceValue, { color: '#10B981' }]}>
-                      {Math.round(analyticsData.averageCompletionRate)}%
-                    </Text>
-                  </View>
-                  <View style={styles.performanceRow}>
-                    <Text style={styles.performanceLabel}>Total Quiz Attempts</Text>
-                    <Text style={styles.performanceValue}>{analyticsData.totalQuizAttempts}</Text>
-                  </View>
-                  <View style={styles.performanceRow}>
-                    <Text style={styles.performanceLabel}>Average Quiz Score</Text>
-                    <Text style={styles.performanceValue}>
-                      {Math.round(analyticsData.averageQuizScore)}%
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Per-Course Analytics */}
-              <View style={styles.analyticsSection}>
-                <Text style={styles.analyticsSectionTitle}>Course Performance</Text>
-                {analyticsData.courseAnalytics.map((course: any, index: number) => (
-                  <View key={index} style={styles.analyticsCourseCard}>
-                    <Text style={styles.analyticsCourseTitle} numberOfLines={1}>
-                      {course.courseTitle}
-                    </Text>
-                    
-                    <View style={styles.courseStatsRow}>
-                      <View style={styles.courseStat}>
-                        <Users size={16} color="#6B7280" />
-                        <Text style={styles.courseStatText}>
-                          {course.totalEnrollments} enrolled
-                        </Text>
-                      </View>
-                      
-                      <View style={styles.courseStat}>
-                        <CheckCircle size={16} color="#10B981" />
-                        <Text style={styles.courseStatText}>
-                          {course.totalCompletions} completed
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.courseMetrics}>
-                      <View style={styles.metricItem}>
-                        <Text style={styles.metricLabel}>Completion Rate</Text>
-                        <Text style={styles.metricValue}>
-                          {Math.round(course.completionRate)}%
-                        </Text>
-                      </View>
-                      
-                      <View style={styles.metricItem}>
-                        <Text style={styles.metricLabel}>Avg Score</Text>
-                        <Text style={styles.metricValue}>
-                          {Math.round(course.averageScore)}%
-                        </Text>
-                      </View>
-                      
-                      <View style={styles.metricItem}>
-                        <Text style={styles.metricLabel}>Quiz Attempts</Text>
-                        <Text style={styles.metricValue}>
-                          {course.totalQuizAttempts}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.analyticsProgressBar}>
-                      <View style={[
-                        styles.analyticsProgressFill, 
-                        { width: `${course.completionRate}%` }
-                      ]} />
-                    </View>
-                  </View>
-                ))}
-              </View>
-            </ScrollView>
-          );
-
-        default:
-          return null
-      }
-    }
-
-    return (
-      <SafeAreaView style={styles.container}>
-        {/* Enhanced Tab Navigation */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Training & Courses</Text>
-          <View style={styles.tabContainer}>
-            <TouchableOpacity
-              style={[styles.tab, activeTab === 'view' && styles.activeTab]}
-              onPress={() => setActiveTab('view')}
-            >
-              <BookOpen size={18} color={activeTab === 'view' ? '#FF6B35' : '#9CA3AF'} />
-              <Text style={[styles.tabText, activeTab === 'view' && styles.activeTabText]}>
-                Courses
-              </Text>
-              {courses.length > 0 && (
-                <View style={styles.tabBadge}>
-                  <Text style={styles.tabBadgeText}>{courses.length}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.tab, activeTab === 'create' && styles.activeTab]}
-              onPress={() => setActiveTab('create')}
-            >
-              <Plus size={18} color={activeTab === 'create' ? '#FF6B35' : '#9CA3AF'} />
-              <Text style={[styles.tabText, activeTab === 'create' && styles.activeTabText]}>
-                Create
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.tab, activeTab === 'analytics' && styles.activeTab]}
-              onPress={() => setActiveTab('analytics')}
-            >
-              <TrendingUp size={18} color={activeTab === 'analytics' ? '#FF6B35' : '#9CA3AF'} />
-              <Text style={[styles.tabText, activeTab === 'analytics' && styles.activeTabText]}>
-                Analytics
-              </Text>
-            </TouchableOpacity>
+              }
+            />
           </View>
-        </View>
+        )
 
-        {/* Content */}
-        <View style={styles.content}>
-          {renderTabContent()}
-        </View>
-      </SafeAreaView>
-    )
+      case 'analytics':
+        if (analyticsLoading) {
+          return (
+            <View style={styles.loadingContainer}>
+              <View style={styles.loadingIconContainer}>
+                <Activity size={40} color="#FF6B35" />
+              </View>
+              <Text style={styles.loadingText}>{t('analytics.analyzingData')}</Text>
+              <Text style={styles.loadingSubtext}>{t('analytics.pleaseWait')}</Text>
+            </View>
+          );
+        }
+
+        if (!analyticsData || analyticsData.totalCoursesCreated === 0) {
+          return (
+            <View style={styles.emptyStateContainer}>
+              <View style={styles.iconCircle}>
+                <TrendingUp size={32} color="#D1D5DB" />
+              </View>
+              <Text style={styles.emptyStateTitle}>{t('trainingPage.noAnalytics')}</Text>
+              <Text style={styles.emptyStateDescription}>
+                {t('trainingPage.createCoursesAnalytics')}
+              </Text>
+            </View>
+          );
+        }
+
+        return (
+          <ScrollView 
+            style={styles.listContainer}
+            contentContainerStyle={styles.analyticsContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Overview Cards */}
+            <View style={styles.statsGrid}>
+              <View style={styles.statCard}>
+                <View style={[styles.iconCircle, { backgroundColor: '#DBEAFE' }]}>
+                  <BookOpen size={20} color="#3B82F6" />
+                </View>
+                <Text style={styles.statValue}>{analyticsData.totalCoursesCreated}</Text>
+                <Text style={styles.statLabel}>{t('trainingPage.coursesCreated')}</Text>
+              </View>
+
+              <View style={styles.statCard}>
+                <View style={[styles.iconCircle, { backgroundColor: '#FCE7F3' }]}>
+                  <Users size={20} color="#EC4899" />
+                </View>
+                <Text style={styles.statValue}>{analyticsData.totalEnrollments}</Text>
+                <Text style={styles.statLabel}>{t('trainingPage.totalEnrollments')}</Text>
+              </View>
+
+              <View style={styles.statCard}>
+                <View style={[styles.iconCircle, { backgroundColor: '#D1FAE5' }]}>
+                  <CheckCircle size={20} color="#10B981" />
+                </View>
+                <Text style={styles.statValue}>{analyticsData.totalCompletions}</Text>
+                <Text style={styles.statLabel}>{t('trainingPage.completions')}</Text>
+              </View>
+
+              <View style={styles.statCard}>
+                <View style={[styles.iconCircle, { backgroundColor: '#FEF3C7' }]}>
+                  <Award size={20} color="#F59E0B" />
+                </View>
+                <Text style={styles.statValue}>{Math.round(analyticsData.averageQuizScore)}%</Text>
+                <Text style={styles.statLabel}>{t('trainingPage.avgQuizScore')}</Text>
+              </View>
+            </View>
+
+            {/* Overall Performance */}
+            <View style={styles.analyticsSection}>
+              <Text style={styles.analyticsSectionTitle}>{t('trainingPage.overallPerformance')}</Text>
+              <View style={styles.performanceCard}>
+                <View style={styles.performanceRow}>
+                  <Text style={styles.performanceLabel}>{t('trainingPage.completionRate')}</Text>
+                  <Text style={[styles.performanceValue, { color: '#10B981' }]}>
+                    {Math.round(analyticsData.averageCompletionRate)}%
+                  </Text>
+                </View>
+                <View style={styles.performanceRow}>
+                  <Text style={styles.performanceLabel}>{t('trainingPage.totalQuizAttempts')}</Text>
+                  <Text style={styles.performanceValue}>{analyticsData.totalQuizAttempts}</Text>
+                </View>
+                <View style={styles.performanceRow}>
+                  <Text style={styles.performanceLabel}>{t('trainingPage.averageQuizScore')}</Text>
+                  <Text style={styles.performanceValue}>
+                    {Math.round(analyticsData.averageQuizScore)}%
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Per-Course Analytics */}
+            <View style={styles.analyticsSection}>
+              <Text style={styles.analyticsSectionTitle}>{t('trainingPage.coursePerformance')}</Text>
+              {analyticsData.courseAnalytics.map((course: any, index: number) => (
+                <View key={index} style={styles.analyticsCourseCard}>
+                  <Text style={styles.analyticsCourseTitle} numberOfLines={1}>
+                    {course.courseTitle}
+                  </Text>
+                  
+                  <View style={styles.courseStatsRow}>
+                    <View style={styles.courseStat}>
+                      <Users size={16} color="#6B7280" />
+                      <Text style={styles.courseStatText}>
+                        {course.totalEnrollments} {t('trainingPage.enrolled')}
+                      </Text>
+                    </View>
+                    
+                    <View style={styles.courseStat}>
+                      <CheckCircle size={16} color="#10B981" />
+                      <Text style={styles.courseStatText}>
+                        {course.totalCompletions} {t('trainingPage.completed')}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.courseMetrics}>
+                    <View style={styles.metricItem}>
+                      <Text style={styles.metricLabel}>{t('trainingPage.completionRate')}</Text>
+                      <Text style={styles.metricValue}>
+                        {Math.round(course.completionRate)}%
+                      </Text>
+                    </View>
+                    
+                    <View style={styles.metricItem}>
+                      <Text style={styles.metricLabel}>{t('trainingPage.avgScore')}</Text>
+                      <Text style={styles.metricValue}>
+                        {Math.round(course.averageScore)}%
+                      </Text>
+                    </View>
+                    
+                    <View style={styles.metricItem}>
+                      <Text style={styles.metricLabel}>{t('trainingPage.quizAttempts')}</Text>
+                      <Text style={styles.metricValue}>
+                        {course.totalQuizAttempts}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.analyticsProgressBar}>
+                    <View style={[
+                      styles.analyticsProgressFill, 
+                      { width: `${course.completionRate}%` }
+                    ]} />
+                  </View>
+                </View>
+              ))}
+            </View>
+          </ScrollView>
+        );
+
+      default:
+        return null
+    }
   }
+
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* Enhanced Tab Navigation */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>{t('trainingPage.title')}</Text>
+        <View style={styles.tabContainer}>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'view' && styles.activeTab]}
+            onPress={() => setActiveTab('view')}
+          >
+            <BookOpen size={18} color={activeTab === 'view' ? '#FF6B35' : '#9CA3AF'} />
+            <Text style={[styles.tabText, activeTab === 'view' && styles.activeTabText]}>
+              {t('trainingPage.coursesTab')}
+            </Text>
+            {courses.length > 0 && (
+              <View style={styles.tabBadge}>
+                <Text style={styles.tabBadgeText}>{courses.length}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'create' && styles.activeTab]}
+            onPress={() => setActiveTab('create')}
+          >
+            <Plus size={18} color={activeTab === 'create' ? '#FF6B35' : '#9CA3AF'} />
+            <Text style={[styles.tabText, activeTab === 'create' && styles.activeTabText]}>
+              {t('trainingPage.createTab')}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'analytics' && styles.activeTab]}
+            onPress={() => setActiveTab('analytics')}
+          >
+            <TrendingUp size={18} color={activeTab === 'analytics' ? '#FF6B35' : '#9CA3AF'} />
+            <Text style={[styles.tabText, activeTab === 'analytics' && styles.activeTabText]}>
+              {t('trainingPage.analyticsTab')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Content */}
+      <View style={styles.content}>
+        {renderTabContent()}
+      </View>
+    </SafeAreaView>
+  )
+}
 
 const styles = StyleSheet.create({
   container: {

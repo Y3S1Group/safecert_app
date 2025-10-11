@@ -5,6 +5,7 @@ import { auth, db } from '@/config/firebaseConfig'
 import { collection, deleteDoc, doc, onSnapshot, orderBy, query, updateDoc, where } from 'firebase/firestore'
 import { AlertTriangle, Bell, CheckCircle, ChevronDown, ChevronLeft, Trash2 } from 'lucide-react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { useLanguage } from '@/providers/languageContext'
 
 interface Notification {
     id: string
@@ -18,6 +19,7 @@ interface Notification {
 
 export default function Notifications () {
     const router = useRouter()
+    const { t } = useLanguage()
     const [notifications, setNotifications] = useState<Notification[]>([])
     const [unreadCount, setUnreadCount] = useState(0)
 
@@ -91,7 +93,7 @@ export default function Notifications () {
           <Text style={styles.notificationTitle}>{item.title}</Text>
           <Text style={styles.notificationMessage}>{item.message}</Text>
           <Text style={styles.notificationTime}>
-            {item.createdAt?.toDate?.()?.toLocaleString() || 'Just now'}
+            {item.createdAt?.toDate?.()?.toLocaleString() || t('notifications.justNow')}
           </Text>
         </View>
         {!item.read && <View style={styles.unreadDot} />}
@@ -111,7 +113,7 @@ export default function Notifications () {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <ChevronLeft size={24} style={styles.backButtonIcon}/>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Notifications</Text>
+        <Text style={styles.headerTitle}>{t('notifications.title')}</Text>
 
         {unreadCount > 0 && (
           <View style={styles.headerBadge}>
@@ -128,8 +130,8 @@ export default function Notifications () {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Bell size={48} color="#D1D5DB"/>
-            <Text style={styles.emptyTitle}>No notifications</Text>
-            <Text style={styles.emptyText}>You're all caught up!</Text>
+            <Text style={styles.emptyTitle}>{t('notifications.noNotifications')}</Text>
+            <Text style={styles.emptyText}>{t('notifications.allCaughtUp')}</Text>
           </View>
         }
       />
