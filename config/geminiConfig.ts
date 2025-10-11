@@ -54,7 +54,7 @@ Requirements:
 Return only the JSON array, no additional text or markdown.`;
 
     const result = await ai.models.generateContent({
-      model: 'gemini-2.0-flash-exp',
+      model: 'gemini-2.0-flash-lite',
       contents: [
         {
           parts: [

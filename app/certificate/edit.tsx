@@ -7,9 +7,11 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '@/config/firebaseConfig';
 import { uploadMultipleImages } from '@/config/cloudinaryConfig';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useLanguage } from '@/providers/languageContext'; // New
 
 export default function EditCertificate() {
   const router = useRouter();
+  const { t } = useLanguage(); // New
   const params = useLocalSearchParams<{ templateId: string }>();
   const templateId = params.templateId;
 
@@ -43,7 +45,7 @@ export default function EditCertificate() {
         }
       } catch (error) {
         console.error('Error fetching template:', error);
-        Alert.alert('Error', 'Failed to load template');
+        Alert.alert(t('common.error'), t('editCertificate.loadError'));
       } finally {
         setLoading(false);
       }
@@ -67,7 +69,7 @@ export default function EditCertificate() {
       }
     } catch (error) {
       console.error("Error picking image:", error);
-      Alert.alert("Error", "Failed to pick image");
+      Alert.alert(t('common.error'), t('editCertificate.pickImageError'));
     }
   };
 
@@ -75,16 +77,16 @@ export default function EditCertificate() {
     try {
       const uploaded: string[] = await uploadMultipleImages([uri]);
       setLogoUrl(uploaded[0]);
-      Alert.alert("Success", "Logo uploaded!");
+      Alert.alert(t('common.success'), t('editCertificate.logoUploaded'));
     } catch (error) {
       console.error("Upload failed:", error);
-      Alert.alert("Error", "Failed to upload logo");
+      Alert.alert(t('common.error'), t('editCertificate.uploadError'));
     }
   };
 
   const handleUpdate = async () => {
     if (!courseName || !instructorName) {
-      Alert.alert("Error", "Please fill required fields: Course name and Instructor name");
+      Alert.alert(t('common.error'), t('editCertificate.requiredFields'));
       return;
     }
 
@@ -101,20 +103,20 @@ export default function EditCertificate() {
         updatedAt: new Date().toISOString(),
       });
 
-      Alert.alert("Success", "Certificate template updated!");
+      Alert.alert(t('common.success'), t('editCertificate.updateSuccess'));
       router.back();
     } catch (error) {
       console.error('Error updating template:', error);
-      Alert.alert("Error", "Failed to update template");
+      Alert.alert(t('common.error'), t('editCertificate.updateError'));
     }
   };
 
   const colorOptions = [
-    { name: 'Purple', primary: '#6B21A8', secondary: '#FDF2F8' },
-    { name: 'Blue', primary: '#1E40AF', secondary: '#EFF6FF' },
-    { name: 'Green', primary: '#065F46', secondary: '#ECFDF5' },
-    { name: 'Red', primary: '#991B1B', secondary: '#FEF2F2' },
-    { name: 'Orange', primary: '#C2410C', secondary: '#FFF7ED' },
+    { name: t('editCertificate.colors.purple'), primary: '#6B21A8', secondary: '#FDF2F8' },
+    { name: t('editCertificate.colors.blue'), primary: '#1E40AF', secondary: '#EFF6FF' },
+    { name: t('editCertificate.colors.green'), primary: '#065F46', secondary: '#ECFDF5' },
+    { name: t('editCertificate.colors.red'), primary: '#991B1B', secondary: '#FEF2F2' },
+    { name: t('editCertificate.colors.orange'), primary: '#C2410C', secondary: '#FFF7ED' },
   ];
 
   const handleBack = () => router.back();
@@ -122,7 +124,7 @@ export default function EditCertificate() {
   if (loading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Loading Template...</Text>
+        <Text style={styles.loadingText}>{t('editCertificate.loadingTemplate')}</Text>
       </SafeAreaView>
     );
   }
@@ -133,23 +135,23 @@ export default function EditCertificate() {
         <TouchableOpacity onPress={handleBack}>
           <ArrowLeft size={24} color="#111827" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Edit Certificate Template</Text>
+        <Text style={styles.headerTitle}>{t('editCertificate.title')}</Text>
         <View style={{ width: 24 }} />
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* Course Info */}
-        <Text style={styles.sectionTitle}>Course Information</Text>
+        <Text style={styles.sectionTitle}>{t('editCertificate.courseInfo')}</Text>
         <TextInput
           style={styles.input}
-          placeholder="Course Name *"
+          placeholder={t('editCertificate.courseName')}
           placeholderTextColor="#9CA3AF"
           value={courseName}
           onChangeText={setCourseName}
         />
         <TextInput
           style={[styles.input, styles.textArea]}
-          placeholder="Course Description"
+          placeholder={t('editCertificate.courseDescription')}
           placeholderTextColor="#9CA3AF"
           value={courseDescription}
           onChangeText={setCourseDescription}
@@ -157,34 +159,34 @@ export default function EditCertificate() {
         />
 
         {/* Instructor Info */}
-        <Text style={styles.sectionTitle}>Instructor Information</Text>
+        <Text style={styles.sectionTitle}>{t('editCertificate.instructorInfo')}</Text>
         <TextInput
           style={styles.input}
-          placeholder="Instructor Name *"
+          placeholder={t('editCertificate.instructorName')}
           placeholderTextColor="#9CA3AF"
           value={instructorName}
           onChangeText={setInstructorName}
         />
         <TextInput
           style={styles.input}
-          placeholder="Instructor Title"
+          placeholder={t('editCertificate.instructorTitle')}
           placeholderTextColor="#9CA3AF"
           value={instructorTitle}
           onChangeText={setInstructorTitle}
         />
 
         {/* Organization Info */}
-        <Text style={styles.sectionTitle}>Organization</Text>
+        <Text style={styles.sectionTitle}>{t('editCertificate.organization')}</Text>
         <TextInput
           style={styles.input}
-          placeholder="Organization Name"
+          placeholder={t('editCertificate.organizationName')}
           placeholderTextColor="#9CA3AF"
           value={organizationName}
           onChangeText={setOrganizationName}
         />
 
         {/* Logo */}
-        <Text style={styles.sectionTitle}>Organization Logo</Text>
+        <Text style={styles.sectionTitle}>{t('editCertificate.organizationLogo')}</Text>
         {logoUrl ? (
           <View style={styles.logoContainer}>
             <Image source={{ uri: logoUrl }} style={styles.logoPreview} />
@@ -195,12 +197,12 @@ export default function EditCertificate() {
         ) : (
           <TouchableOpacity style={styles.uploadButton} onPress={pickLogo}>
             <Camera size={20} color="#FF6B35" />
-            <Text style={styles.uploadText}>Upload Logo</Text>
+            <Text style={styles.uploadText}>{t('editCertificate.uploadLogo')}</Text>
           </TouchableOpacity>
         )}
 
         {/* Colors */}
-        <Text style={styles.sectionTitle}>Certificate Colors</Text>
+        <Text style={styles.sectionTitle}>{t('editCertificate.certificateColors')}</Text>
         <View style={styles.colorGrid}>
           {colorOptions.map((color) => (
             <TouchableOpacity
@@ -225,7 +227,7 @@ export default function EditCertificate() {
 
         <TouchableOpacity style={styles.saveButton} onPress={handleUpdate}>
           <Check size={20} color="#FFF" />
-          <Text style={styles.saveButtonText}>Update Template</Text>
+          <Text style={styles.saveButtonText}>{t('editCertificate.updateTemplate')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
