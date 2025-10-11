@@ -7,7 +7,7 @@ import { ActivityIndicator, Alert, FlatList, ScrollView, StyleSheet, Text, TextI
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useSnackbar } from '@/contexts/SnackbarContext'  
 import { sendNotification } from '@/utils/notifications'
-import { useLanguage } from '@/providers/languageContext' // NEW
+import { useLanguage } from '@/providers/languageContext'
 
 interface Course {
   id: string
@@ -22,7 +22,7 @@ interface Course {
 
 export default function Training() {
   const router = useRouter()
-  const { t } = useLanguage() // NEW
+  const { t } = useLanguage()
   const [activeTab, setActiveTab] = useState<'view' | 'create' | 'analytics'>('view')
   const [courses, setCourses] = useState<Course[]>([])
   const [filteredCourses, setFilteredCourses] = useState<Course[]>([])
@@ -32,6 +32,7 @@ export default function Training() {
   const [myCourses, setMyCourses] = useState<Course[]>([])
   const [courseProgress, setCourseProgress] = useState<Map<string, { completed: number; total: number }>>(new Map())
   const { showSnackbar } = useSnackbar()
+  const [userRole, setUserRole] = useState<'Employee' | 'Instructor'>('Employee');
 
   // Analytics state
   const [analyticsData, setAnalyticsData] = useState<{
@@ -44,6 +45,30 @@ export default function Training() {
     courseAnalytics: any[];
   } | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
+
+  // Listen to user role changes
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user || !user.email) return;
+
+    const unsubscribe = onSnapshot(
+      doc(db, 'users', user.email),
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const userData = docSnap.data();
+          const jobTitle = userData.jobTitle || 'Employee';
+          setUserRole(jobTitle as 'Employee' | 'Instructor');
+          
+          // If user switches to Employee, reset to 'view' tab
+          if (jobTitle === 'Employee' && (activeTab === 'create' || activeTab === 'analytics')) {
+            setActiveTab('view');
+          }
+        }
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
 
   // Update the useEffect to use emails
   useEffect(() => {
@@ -768,53 +793,62 @@ export default function Training() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Enhanced Tab Navigation */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t('trainingPage.title')}</Text>
-        <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'view' && styles.activeTab]}
-            onPress={() => setActiveTab('view')}
-          >
-            <BookOpen size={18} color={activeTab === 'view' ? '#FF6B35' : '#9CA3AF'} />
-            <Text style={[styles.tabText, activeTab === 'view' && styles.activeTabText]}>
-              {t('trainingPage.coursesTab')}
-            </Text>
-            {courses.length > 0 && (
-              <View style={styles.tabBadge}>
-                <Text style={styles.tabBadgeText}>{courses.length}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
+  <SafeAreaView style={styles.container}>
+    <Text style={styles.headerTitle}>{t('trainingPage.title')}</Text>
+    {/* Only show header and tabs for Instructors */}
+    {userRole === 'Instructor' ? (
+      <>
+        <View style={styles.header}>
+          <View style={styles.tabContainer}>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'view' && styles.activeTab]}
+              onPress={() => setActiveTab('view')}
+            >
+              <BookOpen size={18} color={activeTab === 'view' ? '#FF6B35' : '#9CA3AF'} />
+              <Text style={[styles.tabText, activeTab === 'view' && styles.activeTabText]}>
+                {t('trainingPage.coursesTab')}
+              </Text>
+              {courses.length > 0 && (
+                <View style={styles.tabBadge}>
+                  <Text style={styles.tabBadgeText}>{courses.length}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'create' && styles.activeTab]}
-            onPress={() => setActiveTab('create')}
-          >
-            <Plus size={18} color={activeTab === 'create' ? '#FF6B35' : '#9CA3AF'} />
-            <Text style={[styles.tabText, activeTab === 'create' && styles.activeTabText]}>
-              {t('trainingPage.createTab')}
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'create' && styles.activeTab]}
+              onPress={() => setActiveTab('create')}
+            >
+              <Plus size={18} color={activeTab === 'create' ? '#FF6B35' : '#9CA3AF'} />
+              <Text style={[styles.tabText, activeTab === 'create' && styles.activeTabText]}>
+                {t('trainingPage.createTab')}
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'analytics' && styles.activeTab]}
-            onPress={() => setActiveTab('analytics')}
-          >
-            <TrendingUp size={18} color={activeTab === 'analytics' ? '#FF6B35' : '#9CA3AF'} />
-            <Text style={[styles.tabText, activeTab === 'analytics' && styles.activeTabText]}>
-              {t('trainingPage.analyticsTab')}
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'analytics' && styles.activeTab]}
+              onPress={() => setActiveTab('analytics')}
+            >
+              <TrendingUp size={18} color={activeTab === 'analytics' ? '#FF6B35' : '#9CA3AF'} />
+              <Text style={[styles.tabText, activeTab === 'analytics' && styles.activeTabText]}>
+                {t('trainingPage.analyticsTab')}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
 
-      {/* Content */}
+        {/* Content */}
+        <View style={styles.content}>
+          {renderTabContent()}
+        </View>
+      </>
+    ) : (
+      // Employee mode - no header, just show courses directly
       <View style={styles.content}>
         {renderTabContent()}
       </View>
-    </SafeAreaView>
+    )}
+  </SafeAreaView>
   )
 }
 
@@ -827,15 +861,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     paddingTop: 8,
     paddingBottom: 0,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: '700',
     color: '#111827',
     paddingHorizontal: 20,
-    marginBottom: 16,
+    marginTop: 16,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
   tabContainer: {
     flexDirection: 'row',
@@ -886,12 +921,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F9FAFB',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
     paddingVertical: 2,
     borderRadius: 12,
