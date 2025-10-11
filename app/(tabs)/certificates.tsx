@@ -1,15 +1,69 @@
 /*
     app/(tabs)/index.tsx
 */
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Alert } from 'react-native';
 import TemplateList from '@/app/certificate/certificateList';
 import EarnCertificates from '@/app/certificate/earn';
+import { auth, db } from '@/config/firebaseConfig';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc, onSnapshot, DocumentSnapshot, DocumentData } from 'firebase/firestore';
+import { useLanguage } from '@/providers/languageContext'; // New
 
-const TABS = ['Earned', 'Templates', 'Analytics'];
+const TABS = ['Earned', 'Templates'];
 
 export default function certificates() {
+  const { t } = useLanguage(); // New
   const [activeTab, setActiveTab] = useState('Earned');
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch logged-in user's jobTitle
+  // Listen to real-time updates of logged-in user's jobTitle
+  useEffect(() => {
+    const user = auth.currentUser;
+
+    if (!user?.email) {
+      setUserRole(null);
+      setLoading(false);
+      return;
+    }
+
+    // ✅ Real-time Firestore listener with correct typings
+    const userDocRef = doc(db, 'users', user.email); // or user.uid if using UID docs
+    const unsubscribe = onSnapshot(
+      userDocRef,
+      (docSnap: DocumentSnapshot<DocumentData>) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setUserRole(data?.jobTitle || 'User');
+        } else {
+          setUserRole('User');
+        }
+        setLoading(false);
+      },
+      (error: Error) => {
+        console.error('Error listening to user document:', error);
+        setUserRole('User');
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleTabPress = (tab: string) => {
+    // Prevent non-instructors from accessing Templates
+    if (tab === 'Templates' && userRole !== 'Instructor') {
+      Alert.alert(
+        t('certificates.accessDenied'),
+        t('certificates.instructorOnly'),
+        [{ text: t('common.ok') }]
+      );
+      return;
+    }
+    setActiveTab(tab);
+  };
 
   const renderContent = () => {
     switch (activeTab) {
@@ -25,27 +79,26 @@ export default function certificates() {
             <TemplateList />
           </View>
         );
-      case 'Analytics':
-        return (
-          <View style={styles.tabContent}>
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyTitle}>Analytics Coming Soon</Text>
-              <Text style={styles.emptyText}>
-                Analytics data will be displayed here.
-              </Text>
-            </View>
-          </View>
-        );
       default:
         return null;
     }
   };
 
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Text style={{ textAlign: 'center', marginTop: 40, color: '#666' }}>
+          {t('common.loading')}
+        </Text>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Certificates</Text>
+        <Text style={styles.headerTitle}>{t('certificates.title')}</Text>
       </View>
 
       {/* Tab Selector */}
@@ -59,13 +112,15 @@ export default function certificates() {
             <TouchableOpacity
               key={tab}
               style={styles.tabButton}
-              onPress={() => setActiveTab(tab)}
+              onPress={() => handleTabPress(tab)}
             >
-              <Text style={[
-                styles.tabButtonText,
-                activeTab === tab && styles.tabButtonTextActive
-              ]}>
-                {tab}
+              <Text
+                style={[
+                  styles.tabButtonText,
+                  activeTab === tab && styles.tabButtonTextActive,
+                ]}
+              >
+                {t(`certificates.tabs.${tab.toLowerCase()}`)}
               </Text>
               {activeTab === tab && <View style={styles.tabIndicator} />}
             </TouchableOpacity>
@@ -74,9 +129,7 @@ export default function certificates() {
       </View>
 
       {/* Content */}
-      <ScrollView style={styles.contentContainer}>
-        {renderContent()}
-      </ScrollView>
+      <ScrollView style={styles.contentContainer}>{renderContent()}</ScrollView>
     </SafeAreaView>
   );
 }

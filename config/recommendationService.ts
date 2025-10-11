@@ -58,7 +58,7 @@ Return ONLY valid JSON array (no markdown, no code blocks):
 IMPORTANT: Return ONLY the JSON array, nothing else.`;
 
     const result = await ai.models.generateContent({
-      model: 'gemini-2.0-flash-exp',
+      model: 'gemini-2.0-flash-lite',
       contents: [{ parts: [{ text: prompt }] }]
     });
 

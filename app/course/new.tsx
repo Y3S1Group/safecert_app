@@ -1,6 +1,6 @@
 // app/course/new.tsx - Updated with Cloudinary
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
 import { db, auth } from '../../config/firebaseConfig';
@@ -238,16 +238,25 @@ export default function CreateCourse() {
       console.log('Course updated with subtopics and PDFs');
       console.log('Uploaded subtopics:', uploadedSubtopics);
 
-      showSnackbar({
-        message: t('createCourse.success'),
-        type: 'success',
-        duration: 3000
-      });
+// After successfully creating the course
+      Alert.alert(
+        'Success',
+        'Course created successfully!',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Automatically navigate to template creation UI
+              router.push({
+                pathname: '/certificate/certificates',
+                params: { courseId: courseRef.id },
+              });
+            },
+          },
+        ],
+        { cancelable: false }
+      );
 
-      // Navigate back after a short delay
-      setTimeout(() => {
-        router.back();
-      }, 1000);
 
       // Reset form
       setTitle('');

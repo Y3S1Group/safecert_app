@@ -8,9 +8,11 @@ import { auth, db } from '@/config/firebaseConfig';
 import { uploadMultipleImages } from '@/config/cloudinaryConfig';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import Stepper from '@/components/stepper';
+import { useLanguage } from '@/providers/languageContext'; // New
 
 export default function CreateCertificate() {
   const router = useRouter();
+  const { t } = useLanguage(); // New
   const params = useLocalSearchParams<{courseId: string}>(); // gets courseId from previous step
   const courseId = params.courseId;
 
@@ -64,7 +66,7 @@ export default function CreateCertificate() {
       }
     } catch (error) {
       console.error("Error picking image:", error);
-      Alert.alert("Error", "Failed to pick image");
+      Alert.alert(t('common.error'), t('createCertificate.pickImageError'));
     }
   };
 
@@ -72,16 +74,16 @@ export default function CreateCertificate() {
     try {
       const uploaded: string[] = await uploadMultipleImages([uri]);
       setLogoUrl(uploaded[0]);
-      Alert.alert("Success", "Logo uploaded!");
+      Alert.alert(t('common.success'), t('createCertificate.logoUploaded'));
     } catch (error) {
       console.error("Upload failed:", error);
-      Alert.alert("Error", "Failed to upload logo");
+      Alert.alert(t('common.error'), t('createCertificate.uploadError'));
     }
   };
 
   const handleSaveTemplate = async () => {
     if (!courseName || !instructorName) {
-      Alert.alert("Error", "Please fill in required fields: Course name and Instructor name");
+      Alert.alert(t('common.error'), t('createCertificate.requiredFields'));
       return;
     }
 
@@ -109,33 +111,33 @@ export default function CreateCertificate() {
         templateId,
       });
 
-      Alert.alert("Success", "Certificate template saved and linked to course!");
-      router.replace('/course');
+      Alert.alert(t('common.success'), t('createCertificate.saveSuccess'));
+      router.replace('/(tabs)/training');
     } catch (error) {
       console.error("Error saving template:", error);
-      Alert.alert("Error", "Failed to save template");
+      Alert.alert(t('common.error'), t('createCertificate.saveError'));
     }
   };
 
   const handleBack = () => router.back();
 
   const colorOptions = [
-    { name: 'Purple', primary: '#6B21A8', secondary: '#FDF2F8' },
-    { name: 'Blue', primary: '#1E40AF', secondary: '#EFF6FF' },
-    { name: 'Green', primary: '#065F46', secondary: '#ECFDF5' },
-    { name: 'Red', primary: '#991B1B', secondary: '#FEF2F2' },
-    { name: 'Orange', primary: '#C2410C', secondary: '#FFF7ED' },
+    { name: t('createCertificate.colors.purple'), primary: '#6B21A8', secondary: '#FDF2F8' },
+    { name: t('createCertificate.colors.blue'), primary: '#1E40AF', secondary: '#EFF6FF' },
+    { name: t('createCertificate.colors.green'), primary: '#065F46', secondary: '#ECFDF5' },
+    { name: t('createCertificate.colors.red'), primary: '#991B1B', secondary: '#FEF2F2' },
+    { name: t('createCertificate.colors.orange'), primary: '#C2410C', secondary: '#FFF7ED' },
   ];
 
   return (
     <SafeAreaView style={styles.container}>
-      <Stepper currentStep={2} steps={['Create Course', 'Create Certificate']} />
+      <Stepper currentStep={2} steps={[t('createCertificate.stepCreateCourse'), t('createCertificate.stepCreateCertificate')]} />
       
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <ArrowLeft size={24} color="#111827" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Create Certificate Template</Text>
+        <Text style={styles.headerTitle}>{t('createCertificate.title')}</Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -145,17 +147,17 @@ export default function CreateCertificate() {
         showsVerticalScrollIndicator={false}
       >
         {/* Course info */}
-        <Text style={styles.sectionTitle}>Course Information</Text>
+        <Text style={styles.sectionTitle}>{t('createCertificate.courseInfo')}</Text>
         <TextInput
           style={styles.input}
-          placeholder="Course Name *"
+          placeholder={t('createCertificate.courseName')}
           placeholderTextColor="#9CA3AF"
           value={courseName}
           onChangeText={setCourseName}
         />
         <TextInput
           style={[styles.input, styles.textArea]}
-          placeholder="Course Description"
+          placeholder={t('createCertificate.courseDescription')}
           placeholderTextColor="#9CA3AF"
           value={courseDescription}
           onChangeText={setCourseDescription}
@@ -165,34 +167,34 @@ export default function CreateCertificate() {
         />
 
         {/* Instructor info */}
-        <Text style={styles.sectionTitle}>Instructor Information</Text>
+        <Text style={styles.sectionTitle}>{t('createCertificate.instructorInfo')}</Text>
         <TextInput
           style={styles.input}
-          placeholder="Instructor Name *"
+          placeholder={t('createCertificate.instructorName')}
           placeholderTextColor="#9CA3AF"
           value={instructorName}
           onChangeText={setInstructorName}
         />
         <TextInput
           style={styles.input}
-          placeholder="Instructor Title (e.g., Professor, Course Director)"
+          placeholder={t('createCertificate.instructorTitlePlaceholder')}
           placeholderTextColor="#9CA3AF"
           value={instructorTitle}
           onChangeText={setInstructorTitle}
         />
 
         {/* Organization */}
-        <Text style={styles.sectionTitle}>Organization Details</Text>
+        <Text style={styles.sectionTitle}>{t('createCertificate.organizationDetails')}</Text>
         <TextInput
           style={styles.input}
-          placeholder="Organization Name"
+          placeholder={t('createCertificate.organizationName')}
           placeholderTextColor="#9CA3AF"
           value={organizationName}
           onChangeText={setOrganizationName}
         />
 
         {/* Logo */}
-        <Text style={styles.label}>Organization Logo</Text>
+        <Text style={styles.label}>{t('createCertificate.organizationLogo')}</Text>
         {logoUrl ? (
           <View style={styles.logoContainer}>
             <Image source={{ uri: logoUrl }} style={styles.logoPreview} />
@@ -203,12 +205,12 @@ export default function CreateCertificate() {
         ) : (
           <TouchableOpacity style={styles.uploadButton} onPress={pickLogo}>
             <Camera size={20} color="#FF6B35" />
-            <Text style={styles.uploadText}>Upload Logo</Text>
+            <Text style={styles.uploadText}>{t('createCertificate.uploadLogo')}</Text>
           </TouchableOpacity>
         )}
 
         {/* Certificate Colors */}
-        <Text style={styles.sectionTitle}>Certificate Colors</Text>
+        <Text style={styles.sectionTitle}>{t('createCertificate.certificateColors')}</Text>
         <View style={styles.colorGrid}>
           {colorOptions.map((color) => (
             <TouchableOpacity
@@ -238,7 +240,7 @@ export default function CreateCertificate() {
 
         <TouchableOpacity style={styles.saveButton} onPress={handleSaveTemplate}>
           <Check size={20} color="#FFFFFF" />
-          <Text style={styles.saveButtonText}>Save Template</Text>
+          <Text style={styles.saveButtonText}>{t('createCertificate.saveTemplate')}</Text>
         </TouchableOpacity>
 
         <View style={{ height: 20 }} />

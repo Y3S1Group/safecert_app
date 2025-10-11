@@ -6,6 +6,7 @@ import { ArrowLeft, Trash2, Edit, Plus, Calendar, User, Award } from 'lucide-rea
 import { useRouter } from 'expo-router';
 import { collection, getDocs, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/config/firebaseConfig';
+import { useLanguage } from '@/providers/languageContext'; // New
 
 // Template interface
 export interface Template {
@@ -30,6 +31,7 @@ interface ManageTemplatesProps {
 // Component
 export default function ManageTemplates({ templates: propTemplates }: ManageTemplatesProps) {
   const router = useRouter();
+  const { t } = useLanguage(); // New
   const [templates, setTemplates] = useState<Template[]>(propTemplates || []);
   const [loading, setLoading] = useState(!propTemplates); // Only loading if no prop provided
   const [refreshing, setRefreshing] = useState(false);
@@ -58,7 +60,7 @@ export default function ManageTemplates({ templates: propTemplates }: ManageTemp
       setTemplates(tempList);
     } catch (error) {
       console.error('Error fetching templates:', error);
-      Alert.alert('Error', 'Failed to fetch templates');
+      Alert.alert(t('common.error'), t('certificateList.fetchError'));
     } finally {
       setLoading(false);
     }
@@ -83,22 +85,22 @@ export default function ManageTemplates({ templates: propTemplates }: ManageTemp
 
   const handleDelete = async (templateId: string, courseName: string) => {
     Alert.alert(
-      'Delete Template',
-      `Are you sure you want to delete "${courseName}"? This action cannot be undone.`,
+      t('certificateList.deleteTitle'),
+      `${t('certificateList.deleteConfirm')} "${courseName}"? ${t('certificateList.deleteWarning')}`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
               setDeletingId(templateId);
               await deleteDoc(doc(db, 'certificateTemplates', templateId));
               setTemplates(prev => prev.filter(t => t.id !== templateId));
-              Alert.alert('Success', 'Template deleted successfully');
+              Alert.alert(t('common.success'), t('certificateList.deleteSuccess'));
             } catch (error) {
               console.error('Error deleting template:', error);
-              Alert.alert('Error', 'Failed to delete template. Please try again.');
+              Alert.alert(t('common.error'), t('certificateList.deleteError'));
             } finally {
               setDeletingId(null);
             }
@@ -121,7 +123,7 @@ export default function ManageTemplates({ templates: propTemplates }: ManageTemp
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <Award size={48} color="#FF6B35" />
-          <Text style={styles.loadingText}>Loading templates...</Text>
+          <Text style={styles.loadingText}>{t('certificateList.loadingTemplates')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -142,7 +144,7 @@ export default function ManageTemplates({ templates: propTemplates }: ManageTemp
           <View style={styles.statItem}>
             <Award size={24} color="#FF6B35" />
             <Text style={styles.statNumber}>{templates.length}</Text>
-            <Text style={styles.statLabel}>Total Templates</Text>
+            <Text style={styles.statLabel}>{t('certificateList.totalTemplates')}</Text>
           </View>
         </View>
 
@@ -154,13 +156,13 @@ export default function ManageTemplates({ templates: propTemplates }: ManageTemp
             <View style={styles.emptyIconContainer}>
               <Award size={64} color="#D1D5DB" />
             </View>
-            <Text style={styles.emptyTitle}>No Templates Yet</Text>
+            <Text style={styles.emptyTitle}>{t('certificateList.noTemplates')}</Text>
             <Text style={styles.emptyText}>
-              Create your first certificate template to start issuing professional certificates to your students
+              {t('certificateList.emptyStateMessage')}
             </Text>
             <TouchableOpacity style={styles.emptyButton} onPress={handleCreateNew}>
               <Plus size={20} color="#FFFFFF" />
-              <Text style={styles.emptyButtonText}>Create First Template</Text>
+              <Text style={styles.emptyButtonText}>{t('certificateList.createFirst')}</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -211,7 +213,9 @@ export default function ManageTemplates({ templates: propTemplates }: ManageTemp
 
                 <View style={styles.infoRow}>
                   <Calendar size={14} color="#6B7280" />
-                  <Text style={styles.infoText}>Created {formatDate(template.createdAt)}</Text>
+                  <Text style={styles.infoText}>
+                    {t('certificateList.created')} {formatDate(template.createdAt)}
+                  </Text>
                 </View>
               </View>
 
@@ -221,7 +225,7 @@ export default function ManageTemplates({ templates: propTemplates }: ManageTemp
                   onPress={() => router.push(`/certificate/edit?templateId=${template.id}`)}
                 >
                   <Edit size={16} color="#FF6B35" />
-                  <Text style={styles.updateButtonText}>Edit</Text>
+                  <Text style={styles.updateButtonText}>{t('common.edit')}</Text>
                 </TouchableOpacity>
 
 
@@ -231,7 +235,9 @@ export default function ManageTemplates({ templates: propTemplates }: ManageTemp
                   disabled={deletingId === template.id}
                 >
                   <Trash2 size={16} color="#EF4444" />
-                  <Text style={styles.deleteButtonText}>{deletingId === template.id ? 'Deleting...' : 'Delete'}</Text>
+                  <Text style={styles.deleteButtonText}>
+                    {deletingId === template.id ? t('certificateList.deleting') : t('common.delete')}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>

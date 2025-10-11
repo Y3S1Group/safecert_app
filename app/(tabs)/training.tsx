@@ -497,17 +497,6 @@ export default function Training() {
               </TouchableOpacity>
               
               <TouchableOpacity 
-                style={styles.actionButton}
-                onPress={(e) => {
-                  e.stopPropagation()
-                  router.push(`/course/edit/${item.id}` as any)
-                }}
-              >
-                <Edit size={16} color="#6B7280" />
-                <Text style={styles.actionText}>{t('common.edit')}</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
                 style={[styles.actionButton, styles.deleteButton]}
                 onPress={(e) => {
                   e.stopPropagation()

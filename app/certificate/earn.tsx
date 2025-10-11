@@ -4,6 +4,7 @@ import { Award, CheckCircle, Book } from 'lucide-react-native';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/config/firebaseConfig';
 import { useRouter } from 'expo-router';
+import { useLanguage } from '@/providers/languageContext'; // New
 
 
 interface Course {
@@ -23,6 +24,7 @@ interface EnrolledCourseInfo {
 }
 
 export default function EarnedCertificates() {
+  const { t } = useLanguage(); // New
   const [earnedCourses, setEarnedCourses] = useState<EnrolledCourseInfo[]>([]);
   const [enrolledCourses, setEnrolledCourses] = useState<EnrolledCourseInfo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -127,7 +129,7 @@ export default function EarnedCertificates() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#FF6B35" />
-        <Text style={styles.loadingText}>Loading certificates...</Text>
+        <Text style={styles.loadingText}>{t('earnCertificates.loadingCertificates')}</Text>
       </View>
     );
   }
@@ -139,14 +141,14 @@ export default function EarnedCertificates() {
     >
       {/* Earned Certificates Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Earned Certificates</Text>
+        <Text style={styles.sectionTitle}>{t('earnCertificates.earnedTitle')}</Text>
         {earnedCourses.length === 0 ? (
           <View style={styles.emptyContainer}>
             <View style={styles.iconCircle}>
               <Award size={32} color="#D1D5DB" />
             </View>
-            <Text style={styles.emptyTitle}>No Certificates Earned</Text>
-            <Text style={styles.emptyText}>Complete your courses to earn certificates!</Text>
+            <Text style={styles.emptyTitle}>{t('earnCertificates.noCertificates')}</Text>
+            <Text style={styles.emptyText}>{t('earnCertificates.completeToEarn')}</Text>
           </View>
         ) : (
           earnedCourses.map(course => (
@@ -154,13 +156,13 @@ export default function EarnedCertificates() {
               <View style={styles.cardHeader}>
                 <View style={styles.completedBadge}>
                   <CheckCircle size={14} color="#10B981" />
-                  <Text style={styles.completedBadgeText}>Completed</Text>
+                  <Text style={styles.completedBadgeText}>{t('earnCertificates.completed')}</Text>
                 </View>
               </View>
               <Text style={styles.courseTitle}>{course.courseTitle}</Text>
               <View style={styles.progressInfo}>
                 <Text style={styles.progressText}>
-                  {course.completedSubtopics}/{course.totalSubtopics} topics completed
+                  {course.completedSubtopics}/{course.totalSubtopics} {t('earnCertificates.topicsCompleted')}
                 </Text>
               </View>
                 {course.certificateTemplateId ? (
@@ -174,13 +176,13 @@ export default function EarnedCertificates() {
                         }}
                     >
                         <Award size={16} color="#fff" />
-                        <Text style={styles.buttonText}>View Certificate</Text>
+                        <Text style={styles.buttonText}>{t('earnCertificates.viewCertificate')}</Text>
                     </TouchableOpacity>
                     </View>
                 </>
                 ) : (
                 <View style={styles.noTemplateContainer}>
-                    <Text style={styles.noTemplateText}>⚠️ No certificate template assigned</Text>
+                    <Text style={styles.noTemplateText}>⚠️ {t('earnCertificates.noTemplate')}</Text>
                 </View>
                 )}
 
