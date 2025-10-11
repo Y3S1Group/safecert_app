@@ -6,7 +6,7 @@ import { doc, getDoc, getDocs, collection, query, where } from 'firebase/firesto
 import { db, auth } from '@/config/firebaseConfig';
 import { Course, Subtopic } from '@/types/course';
 
-import { BookOpen, FileText, ArrowLeft, Play, X, Download, CheckCircle, Info, Trophy, Volume2, VolumeX } from 'lucide-react-native';
+import { BookOpen, FileText, ArrowLeft, Play, X, Download, CheckCircle, Info, Trophy, Volume2, VolumeX, Languages } from 'lucide-react-native';
 import { WebView } from 'react-native-webview';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
@@ -15,6 +15,7 @@ import { getViewablePDFUrl } from '@/config/cloudinaryConfig';
 import { generateQuizFromPDF } from '@/config/geminiConfig';
 import * as Speech from 'expo-speech';
 import { useLanguage } from '@/providers/languageContext';
+import { translateText, translateBatch, clearTranslationCache } from '@/utils/googleTranslate'; // Added
 
 export default function CourseDetail() {
   const { id } = useLocalSearchParams();
@@ -36,7 +37,7 @@ export default function CourseDetail() {
   const [userProgress, setUserProgress] = useState<number[]>([]);
   const [progressPercentage, setProgressPercentage] = useState(0);
 
-  // Dynamic Translation - New
+  // Dynamic Translation State
   const [translatedCourse, setTranslatedCourse] = useState<{
     title: string;
     description: string;
@@ -48,10 +49,10 @@ export default function CourseDetail() {
 
   const [isTranslating, setIsTranslating] = useState(false);
 
-  // TTS State - New
+  // TTS State
   const [speakingItem, setSpeakingItem] = useState<string | null>(null);
 
-  // TTS Functions - New
+  // TTS Functions
   const speakText = (id: string, text: string) => {
     console.log('🔊 Speaking with language:', language);
     if (speakingItem === id) {
@@ -80,7 +81,6 @@ export default function CourseDetail() {
     });
   };
 
-  // Updated
   const speakCourseInfo = () => {
     if (!course) return;
     const title = translatedCourse?.title || course.title;
@@ -89,7 +89,6 @@ export default function CourseDetail() {
     speakText('course-info', text);
   };
 
-  // Updated
   const speakSubtopic = (index: number, title: string, description?: string) => {
     const translatedTitle = translatedSubtopics[index]?.title || title;
     const translatedDesc = translatedSubtopics[index]?.description || description;
@@ -130,6 +129,67 @@ export default function CourseDetail() {
     };
     fetchCourse();
   }, [id]);
+
+  // Translation Effect - Triggers when language changes
+  useEffect(() => {
+    const translateCourseContent = async () => {
+      if (!course || language === 'en') {
+        // Reset to original if English
+        setTranslatedCourse(null);
+        setTranslatedSubtopics({});
+        clearTranslationCache();
+        return;
+      }
+
+      console.log(`🌐 Translating course to ${language}...`);
+      setIsTranslating(true);
+
+      try {
+        // Translate course title and description
+        const [translatedTitle, translatedDesc] = await translateBatch(
+          [course.title, course.description],
+          language
+        );
+
+        setTranslatedCourse({
+          title: translatedTitle,
+          description: translatedDesc
+        });
+
+        // Translate all subtopics
+        const translatedSubs: { [key: number]: { title: string; description?: string } } = {};
+
+        for (let i = 0; i < subtopics.length; i++) {
+          const sub = subtopics[i];
+          const textsToTranslate = [sub.title];
+          
+          if (sub.description) {
+            textsToTranslate.push(sub.description);
+          }
+
+          const translated = await translateBatch(textsToTranslate, language);
+          
+          translatedSubs[i] = {
+            title: translated[0],
+            description: translated[1] || undefined
+          };
+        }
+
+        setTranslatedSubtopics(translatedSubs);
+        console.log('✅ Translation complete!');
+      } catch (error) {
+        console.error('❌ Translation error:', error);
+        Alert.alert(
+          t('common.error'),
+          'Failed to translate course content. Showing original text.'
+        );
+      } finally {
+        setIsTranslating(false);
+      }
+    };
+
+    translateCourseContent();
+  }, [course, subtopics, language]);
 
   useEffect(() => {
     const fetchUserProgress = async () => {
@@ -180,7 +240,6 @@ export default function CourseDetail() {
           const subtopicIndex = data.subtopicIndex;
           const score = data.score || 0;
 
-          // Keep highest score for each subtopic
           if (!scoresMap.has(subtopicIndex) || scoresMap.get(subtopicIndex)! < score) {
             scoresMap.set(subtopicIndex, score);
           }
@@ -279,6 +338,10 @@ export default function CourseDetail() {
 
   const isSpeakingCourse = speakingItem === 'course-info';
 
+  // Use translated content if available
+  const displayTitle = translatedCourse?.title || course.title;
+  const displayDescription = translatedCourse?.description || course.description;
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView 
@@ -293,9 +356,21 @@ export default function CourseDetail() {
             <ArrowLeft size={24} color="#111827" />
           </TouchableOpacity>
           <View style={styles.headerTextContainer}>
-            <Text style={styles.headerTitle}>{course.title}</Text>
+            <Text style={styles.headerTitle}>{displayTitle}</Text>
           </View>
         </View>
+
+        {/* Translation Indicator */}
+        {isTranslating && (
+          <View style={styles.translatingBanner}>
+            <ActivityIndicator size="small" color="#3B82F6" />
+            <Text style={styles.translatingText}>
+              {language === 'si' ? 'සිංහලට පරිවර්තනය කරමින්...' : 
+               language === 'ta' ? 'தமிழில் மொழிபெயர்க்கிறது...' : 
+               'Translating...'}
+            </Text>
+          </View>
+        )}
 
         {/* Course Info Card with Progress */}
         <View style={styles.courseCard}>
@@ -310,8 +385,14 @@ export default function CourseDetail() {
                 <Info size={20} color="#FF6B35" />
               </TouchableOpacity>
             </View>
+            {language !== 'en' && (
+              <View style={styles.translatedBadge}>
+                <Languages size={14} color="#3B82F6" />
+                <Text style={styles.translatedBadgeText}>Translated</Text>
+              </View>
+            )}
           </View>
-          <Text style={styles.description}>{course.description}</Text>
+          <Text style={styles.description}>{displayDescription}</Text>
           
           {/* TTS Button for Course Info */}
           <TouchableOpacity 
@@ -362,9 +443,12 @@ export default function CourseDetail() {
         ) : (
           subtopics.map((sub, index) => {
             const isCompleted = userProgress.includes(index);
-
             const isSpeakingSubtopic = speakingItem === `subtopic-${index}`;
             const quizScore = quizScores.get(index);
+
+            // Use translated content if available
+            const displaySubTitle = translatedSubtopics[index]?.title || sub.title;
+            const displaySubDesc = translatedSubtopics[index]?.description || sub.description;
 
             return (
               <View key={index} style={styles.subtopicCard}>
@@ -384,9 +468,9 @@ export default function CourseDetail() {
                   )}
                 </View>
                 
-                <Text style={styles.subTitle}>{sub.title}</Text>
-                {sub.description && (
-                  <Text style={styles.subDesc}>{sub.description}</Text>
+                <Text style={styles.subTitle}>{displaySubTitle}</Text>
+                {displaySubDesc && (
+                  <Text style={styles.subDesc}>{displaySubDesc}</Text>
                 )}
 
                 {/* TTS Button for Subtopic */}
@@ -409,7 +493,6 @@ export default function CourseDetail() {
                   <>
                     <Text style={styles.materialsLabel}>{t('courseDetail.studyMaterials')}</Text>
                     <View style={styles.pdfRow}>
-                      {/* Fixed order: English, Sinhala, Tamil */}
                       {(['english', 'sinhala', 'tamil'] as const).map((lang) => {
                         const url = sub.pdfs[lang];
                         return url ? (
@@ -1202,5 +1285,36 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+    // Add these new styles:
+  translatingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  translatingText: {
+    fontSize: 14,
+    color: '#1E40AF',
+    fontWeight: '500',
+  },
+  translatedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+  },
+  translatedBadgeText: {
+    fontSize: 11,
+    color: '#3B82F6',
+    fontWeight: '600',
   },
 });
