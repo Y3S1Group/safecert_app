@@ -12,9 +12,11 @@ import { ArrowLeft, FileText, Trash2, X } from 'lucide-react-native';
 import { useSnackbar } from '@/contexts/SnackbarContext';
 import { sendNotification } from '@/utils/notifications';
 import Stepper from '@/components/stepper';
+import { useLanguage } from '@/providers/languageContext'; // Added
 
 export default function CreateCourse() {
   const { showSnackbar } = useSnackbar();
+  const { t } = useLanguage(); // Added
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [subtopics, setSubtopics] = useState<SubtopicForm[]>([
@@ -37,9 +39,11 @@ export default function CreateCourse() {
           updated[index].pdfs[lang] = file;
           return updated;
         });
-        const langName = lang === 'english' ? 'English' : lang === 'sinhala' ? 'Sinhala' : 'Tamil';
+        const langName = lang === 'english' ? t('createCourse.languages.english') : 
+                         lang === 'sinhala' ? t('createCourse.languages.sinhala') : 
+                         t('createCourse.languages.tamil');
         showSnackbar({
-          message: `${langName} PDF selected: ${file.name}`,
+          message: `${langName} ${t('createCourse.pdfSelected')}: ${file.name}`,
           type: 'success',
           duration: 2000
         });
@@ -47,7 +51,7 @@ export default function CreateCourse() {
     } catch (error) {
       console.error('Error picking PDF:', error);
       showSnackbar({
-        message: 'Failed to select PDF',
+        message: t('createCourse.errors.selectPDF'),
         type: 'error',
         duration: 3000
       });
@@ -65,7 +69,7 @@ export default function CreateCourse() {
   const removeSubtopic = (index: number) => {
     if (subtopics.length === 1) {
       showSnackbar({
-        message: 'You must have at least one subtopic',
+        message: t('createCourse.errors.oneSubtopic'),
         type: 'warning',
         duration: 3000
       });
@@ -73,7 +77,7 @@ export default function CreateCourse() {
     }
     setSubtopics(subtopics.filter((_, i) => i !== index));
     showSnackbar({
-      message: 'Subtopic removed',
+      message: t('createCourse.subtopicRemoved'),
       type: 'error',
       duration: 2000
     });
@@ -85,9 +89,11 @@ export default function CreateCourse() {
       updated[index].pdfs[lang] = null;
       return updated;
     });
-    const langName = lang === 'english' ? 'English' : lang === 'sinhala' ? 'Sinhala' : 'Tamil';
+    const langName = lang === 'english' ? t('createCourse.languages.english') : 
+                     lang === 'sinhala' ? t('createCourse.languages.sinhala') : 
+                     t('createCourse.languages.tamil');
     showSnackbar({
-      message: `${langName} PDF removed`,
+      message: `${langName} ${t('createCourse.pdfRemoved')}`,
       type: 'error',
       duration: 2000
     });
@@ -97,7 +103,7 @@ export default function CreateCourse() {
     // Validation
     if (!title.trim() || !description.trim()) {
       showSnackbar({
-        message: 'Please fill in course title and description',
+        message: t('createCourse.errors.fillTitleDescription'),
         type: 'warning',
         duration: 3000
       });
@@ -107,7 +113,7 @@ export default function CreateCourse() {
     const hasValidSubtopic = subtopics.some(sub => sub.title.trim());
     if (!hasValidSubtopic) {
       showSnackbar({
-        message: 'Please add at least one subtopic with a title',
+        message: t('createCourse.errors.addSubtopic'),
         type: 'warning',
         duration: 3000
       });
@@ -117,7 +123,7 @@ export default function CreateCourse() {
     // Validate Cloudinary configuration
     if (!validateCloudinaryConfig()) {
       showSnackbar({
-        message: 'Cloudinary is not properly configured. Please check your settings.',
+        message: t('createCourse.errors.cloudinaryConfig'),
         type: 'error',
         duration: 4000
       });
@@ -126,7 +132,7 @@ export default function CreateCourse() {
 
     setLoading(true);
     try {
-      setUploadProgress('Creating course...');
+      setUploadProgress(t('createCourse.progress.creating'));
       
       // Create course document first
       const courseRef = await addDoc(collection(db, 'courses'), {
@@ -147,7 +153,7 @@ export default function CreateCourse() {
         
         if (!subtopic.title.trim()) continue;
 
-        setUploadProgress(`Processing subtopic ${i + 1}/${subtopics.length}...`);
+        setUploadProgress(`${t('createCourse.progress.processing')} ${i + 1}/${subtopics.length}...`);
 
         const pdfURLs: any = {
           english: null,
@@ -165,7 +171,10 @@ export default function CreateCourse() {
           
           if (file && typeof file !== 'string') {
             try {
-              setUploadProgress(`Uploading ${lang} PDF for "${subtopic.title}"...`);
+              const langName = lang === 'english' ? t('createCourse.languages.english') : 
+                               lang === 'sinhala' ? t('createCourse.languages.sinhala') : 
+                               t('createCourse.languages.tamil');
+              setUploadProgress(`${t('createCourse.progress.uploading')} ${langName} PDF ${t('createCourse.progress.for')} "${subtopic.title}"...`);
               
               const fileName = `${lang}_${Date.now()}.pdf`;
               const downloadURL = await uploadPDFToCloudinary(
@@ -178,8 +187,11 @@ export default function CreateCourse() {
               console.log(`${lang} PDF uploaded successfully:`, downloadURL);
             } catch (uploadError) {
               console.error(`Error uploading ${lang} PDF:`, uploadError);
+              const langName = lang === 'english' ? t('createCourse.languages.english') : 
+                               lang === 'sinhala' ? t('createCourse.languages.sinhala') : 
+                               t('createCourse.languages.tamil');
               showSnackbar({
-                message: `Failed to upload ${lang} PDF for "${subtopic.title}"`,
+                message: `${t('createCourse.errors.uploadFailed')} ${langName} PDF ${t('createCourse.progress.for')} "${subtopic.title}"`,
                 type: 'warning',
                 duration: 3000
               });
@@ -196,7 +208,7 @@ export default function CreateCourse() {
 
       // Update course document with subtopics
       // Send notifications to all users
-      setUploadProgress('Notifying users...');
+      setUploadProgress(t('createCourse.progress.notifying'));
       try {
         const usersSnapshot = await getDocs(collection(db, 'users'));
         const notificationPromises: Promise<void>[] = [];
@@ -210,8 +222,8 @@ export default function CreateCourse() {
           notificationPromises.push(
             sendNotification(
               userId,
-              'New Course Available',
-              `"${title.trim()}" has been published. Enroll now to start learning!`,
+              t('createCourse.notification.title'),
+              `"${title.trim()}" ${t('createCourse.notification.message')}`,
               'info'
             )
           );
@@ -227,7 +239,7 @@ export default function CreateCourse() {
       console.log('Uploaded subtopics:', uploadedSubtopics);
 
       showSnackbar({
-        message: 'Course created successfully!',
+        message: t('createCourse.success'),
         type: 'success',
         duration: 3000
       });
@@ -244,9 +256,9 @@ export default function CreateCourse() {
 
     } catch (error) {
       console.error('Error creating course:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Please try again.';
+      const errorMessage = error instanceof Error ? error.message : t('createCourse.errors.tryAgain');
       showSnackbar({
-        message: `Failed to create course: ${errorMessage}`,
+        message: `${t('createCourse.errors.createFailed')}: ${errorMessage}`,
         type: 'error',
         duration: 4000
       });
@@ -258,13 +270,13 @@ export default function CreateCourse() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <Stepper currentStep={2} steps={['Create Course', 'Create Certificate']} />
+      <Stepper currentStep={2} steps={[t('createCourse.stepper.createCourse'), t('createCourse.stepper.createCertificate')]} />
 
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <ArrowLeft size={24} color="#111827" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Create Course</Text>
+        <Text style={styles.headerTitle}>{t('createCourse.title')}</Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -280,11 +292,11 @@ export default function CreateCourse() {
         )}
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Course Information</Text>
+          <Text style={styles.sectionTitle}>{t('createCourse.courseInformation')}</Text>
           
           <TextInput
             style={styles.input}
-            placeholder="Course Title"
+            placeholder={t('createCourse.placeholders.courseTitle')}
             placeholderTextColor="#9CA3AF"
             value={title}
             onChangeText={setTitle}
@@ -293,7 +305,7 @@ export default function CreateCourse() {
           
           <TextInput
             style={[styles.input, styles.textArea]}
-            placeholder="Course Description"
+            placeholder={t('createCourse.placeholders.courseDescription')}
             placeholderTextColor="#9CA3AF"
             value={description}
             multiline
@@ -304,12 +316,12 @@ export default function CreateCourse() {
           />
         </View>
 
-        <Text style={styles.sectionHeader}>Subtopics ({subtopics.length})</Text>
+        <Text style={styles.sectionHeader}>{t('createCourse.subtopics')} ({subtopics.length})</Text>
 
         {subtopics.map((sub, index) => (
           <View key={index} style={styles.subtopicCard}>
             <View style={styles.subtopicHeader}>
-              <Text style={styles.subtopicNumber}>Subtopic {index + 1}</Text>
+              <Text style={styles.subtopicNumber}>{t('createCourse.subtopic')} {index + 1}</Text>
               {subtopics.length > 1 && (
                 <TouchableOpacity 
                   onPress={() => removeSubtopic(index)}
@@ -323,7 +335,7 @@ export default function CreateCourse() {
 
             <TextInput
               style={styles.input}
-              placeholder={`Subtopic ${index + 1} Title`}
+              placeholder={`${t('createCourse.subtopic')} ${index + 1} ${t('createCourse.titleLabel')}`}
               placeholderTextColor="#9CA3AF"
               value={sub.title}
               onChangeText={(text) => {
@@ -336,7 +348,7 @@ export default function CreateCourse() {
             
             <TextInput
               style={[styles.input, styles.smallTextArea]}
-              placeholder="Subtopic Description"
+              placeholder={t('createCourse.placeholders.subtopicDescription')}
               placeholderTextColor="#9CA3AF"
               value={sub.description}
               multiline
@@ -350,7 +362,7 @@ export default function CreateCourse() {
               editable={!loading}
             />
 
-            <Text style={styles.uploadLabel}>Upload PDF Materials</Text>
+            <Text style={styles.uploadLabel}>{t('createCourse.uploadPDF')}</Text>
             <View style={styles.uploadContainer}>
               {(['english', 'sinhala', 'tamil'] as const).map((lang) => (
                 <View key={lang} style={styles.uploadWrapper}>
@@ -370,7 +382,9 @@ export default function CreateCourse() {
                       styles.uploadText,
                       sub.pdfs[lang] && styles.uploadTextSelected
                     ]}>
-                      {lang === 'english' ? 'English' : lang === 'sinhala' ? 'Sinhala' : 'Tamil'}
+                      {lang === 'english' ? t('createCourse.languages.english') : 
+                       lang === 'sinhala' ? t('createCourse.languages.sinhala') : 
+                       t('createCourse.languages.tamil')}
                     </Text>
                     {sub.pdfs[lang] && (
                       <Text style={styles.checkMark}>✓</Text>
@@ -398,7 +412,7 @@ export default function CreateCourse() {
           style={styles.addButton}
           disabled={loading}
         >
-          <Text style={styles.addButtonText}>+ Add Another Subtopic</Text>
+          <Text style={styles.addButtonText}>{t('createCourse.addSubtopic')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
@@ -407,7 +421,7 @@ export default function CreateCourse() {
           disabled={loading}
         >
           <Text style={styles.submitText}>
-            {loading ? 'Creating Course...' : 'Create Course'}
+            {loading ? t('createCourse.creating') : t('createCourse.createButton')}
           </Text>
         </TouchableOpacity>
 
