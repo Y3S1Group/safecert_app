@@ -187,7 +187,9 @@ export default function profile() {
     setModalVisible(false);
   };
 
-  const handleSwitchToInstructor = () => {
+  const handleSwitchToInstructor = async () => {
+    if (!userInfo) return;
+
     showAlert({
       message: t('profile.switchConfirm'),
       icon: ArrowLeftRight,
@@ -197,18 +199,47 @@ export default function profile() {
         {
           text: t('common.cancel'),
           style: 'cancel',
-          onPress: () => console.log('Cancelled')
+          onPress: () => console.log('Cancelled'),
         },
         {
           text: t('profile.switch'),
           style: 'default',
-          onPress: () => {
-              router.replace('/instructor/instructorDash');
-          }
-        }
-      ]
-    })
+          onPress: async () => {
+            try {
+              // ✅ Update Firestore user jobTitle to "Instructor"
+              const userRef = doc(db, 'users', userInfo.email);
+              await updateDoc(userRef, { jobTitle: 'Instructor' });
+
+              // ✅ Update local state
+              setUserInfo(prev => prev ? { ...prev, jobTitle: 'Instructor' } : null);
+
+              // ✅ Optional: show confirmation message
+              showAlert({
+                message: t('profile.switchSuccess') || 'You are now an Instructor!',
+                icon: CheckCircle,
+                iconColor: '#10B981',
+                iconBgColor: '#D1FAE5',
+                autoClose: true,
+                autoCloseDelay: 1500,
+              });
+
+              
+              setTimeout(() => {
+                router.replace('/(tabs)/profile');
+              }, 1500);
+            } catch (error) {
+              console.error('Error switching to instructor:', error);
+              showSnackbar({
+                message: t('profile.switchError') || 'Failed to switch role. Try again.',
+                type: 'error',
+              });
+            }
+          },
+        },
+      ],
+    });
   };
+
 
   const handleNotifications = () => {
     showAlert({
