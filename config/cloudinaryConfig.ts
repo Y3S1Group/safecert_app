@@ -32,15 +32,23 @@ export const UploadImageToClooudinary = async (
     }
 ): Promise<string> => {
     try {
+        console.log('📸 Uploading image to Cloudinary:', imageUri) // Debug log
+
         const formData = new FormData()
 
-        formData.append('file', {
+        // Handle different URI formats (camera vs gallery)
+        const imageFile: any = {
             uri: imageUri,
             type: 'image/jpeg',
             name: `incident-${Date.now()}.jpg`,
-        } as any)
+        }
 
+        formData.append('file', imageFile)
         formData.append('upload_preset', cloudinaryConfig.uploadPreset)
+
+        if (options?.folder) {
+            formData.append('folder', options.folder)
+        }
 
         if (options?.quality) {
             formData.append('quality', options.quality)
@@ -52,26 +60,36 @@ export const UploadImageToClooudinary = async (
 
         const uploadUrl = `${cloudinaryConfig.apiUrl}/${cloudinaryConfig.cloudName}/image/upload`
 
+        console.log('📤 Uploading to:', uploadUrl) // Debug log
+
         const response = await fetch(uploadUrl, {
             method: 'POST',
             body: formData,
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
+            // ✅ REMOVE Content-Type header - let browser set it automatically with boundary
+            // headers: {
+            //     'Content-Type': 'multipart/form-data', // ❌ This causes issues!
+            // },
         })
 
+        console.log('📥 Response status:', response.status) // Debug log
+
         if (!response.ok) {
+            const errorText = await response.text()
+            console.error('❌ Upload failed:', errorText)
             throw new Error(`Upload failed: ${response.statusText}`)
         }
+
         const data: CloudinaryUploadResponse = await response.json()
+        console.log('✅ Upload successful:', data.secure_url) // Debug log
     
         if ('error' in data) {
             throw new Error((data as any).error.message)
         }
+
         return data.secure_url
 
     } catch (error) {
-        console.error('Error uploading to Cloudinary:', error)
+        console.error('❌ Error uploading to Cloudinary:', error)
         throw new Error(`Failed to upload image: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
 }
@@ -84,39 +102,48 @@ export const uploadMultipleImages = async (
         onProgress?: (completed: number, total: number) => void;
     }
 ): Promise<string[]> => {
+    console.log(`📸 Starting upload of ${imageUris.length} images`) // Debug log
+
     const uploadPromises = imageUris.map(async (uri, index) => {
         try {
+            console.log(`📤 Uploading image ${index + 1}/${imageUris.length}:`, uri) // Debug log
+            
             const url = await UploadImageToClooudinary(uri, options)
 
             if (options?.onProgress) {
                 options.onProgress(index + 1, imageUris.length)
             }
 
+            console.log(`✅ Image ${index + 1} uploaded successfully`) // Debug log
             return url
         } catch (error) {
-            console.error(`Failed to uoload image ${index + 1}:`, error)
-
+            console.error(`❌ Failed to upload image ${index + 1}:`, error)
             return null
         }
     })
 
     const results = await Promise.all(uploadPromises)
+    const successfulUploads = results.filter((url): url is string => url !== null)
+    
+    console.log(`✅ Successfully uploaded ${successfulUploads.length}/${imageUris.length} images`) // Debug log
 
-    return results.filter((url): url is string => url !== null)
+    return successfulUploads
 }
 
 export const validateCloudinaryConfig = (): boolean => {
     const { cloudName, uploadPreset } = cloudinaryConfig
 
     if (!cloudName) {
-        console.error('Clooudinary cloud name not configured')
+        console.error('❌ Cloudinary cloud name not configured')
         return false
     }
 
     if (!uploadPreset) {
-        console.error('Cloudinary upload preset not configured')
+        console.error('❌ Cloudinary upload preset not configured')
         return false
     }
+
+    console.log('✅ Cloudinary config valid')
     return true
 }
 
@@ -170,25 +197,20 @@ export const uploadPDFToCloudinary = async (
         } as any);
 
         formData.append('upload_preset', cloudinaryConfig.uploadPreset);
-        
-        // Change from 'raw' to 'auto' - this allows better delivery options
         formData.append('resource_type', 'auto');
 
         if (options?.folder) {
             formData.append('folder', options.folder);
         }
 
-        // IMPORTANT: Change the upload endpoint to 'auto' instead of 'raw'
         const uploadUrl = `${cloudinaryConfig.apiUrl}/${cloudinaryConfig.cloudName}/auto/upload`;
 
-        console.log('Uploading PDF to Cloudinary:', fileName);
+        console.log('📄 Uploading PDF to Cloudinary:', fileName);
 
         const response = await fetch(uploadUrl, {
             method: 'POST',
             body: formData,
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
+            // ✅ No Content-Type header for PDF upload either
         });
 
         if (!response.ok) {
@@ -202,15 +224,13 @@ export const uploadPDFToCloudinary = async (
             throw new Error((data as any).error.message);
         }
 
-        // Convert to image delivery URL for better viewing (shows first page as preview)
-        // Or use the secure_url directly if you've configured your upload preset correctly
         let viewableUrl = data.secure_url;
         
-        console.log('PDF uploaded successfully:', viewableUrl);
+        console.log('✅ PDF uploaded successfully:', viewableUrl);
         return viewableUrl;
 
     } catch (error) {
-        console.error('Error uploading PDF to Cloudinary:', error);
+        console.error('❌ Error uploading PDF to Cloudinary:', error);
         throw new Error(`Failed to upload PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 };
@@ -232,7 +252,7 @@ export const uploadMultiplePDFs = async (
 
             return url;
         } catch (error) {
-            console.error(`Failed to upload PDF ${index + 1} (${file.name}):`, error);
+            console.error(`❌ Failed to upload PDF ${index + 1} (${file.name}):`, error);
             return null;
         }
     });
@@ -242,15 +262,10 @@ export const uploadMultiplePDFs = async (
     return results.filter((url): url is string => url !== null);
 };
 
-// Add this function to convert Cloudinary PDF URLs for viewing
 export const getViewablePDFUrl = (cloudinaryUrl: string): string => {
   if (!cloudinaryUrl.includes('cloudinary.com')) {
     return cloudinaryUrl;
   }
   
-  // Option 1: Use Google Docs Viewer (most reliable for mobile)
   return `https://docs.google.com/viewer?url=${encodeURIComponent(cloudinaryUrl)}&embedded=true`;
-  
-  // Option 2: If you want to try Cloudinary's image conversion (works for first page only)
-  // return cloudinaryUrl.replace('/raw/', '/image/').replace('.pdf', '.jpg');
 };

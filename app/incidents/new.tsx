@@ -50,7 +50,7 @@ export default function CreateIncident() {
     t('createIncident.types.propertyDamage'),
     t('createIncident.types.environmental')
   ]
-  
+
   const priorities = [
     { key: 'low', label: t('createIncident.priority.low'), icon: '🟢' },
     { key: 'medium', label: t('createIncident.priority.medium'), icon: '🟡' },
@@ -67,7 +67,7 @@ export default function CreateIncident() {
         showSnackbar({
           message: t('createIncident.errors.mediaPermission'),
           type: 'warning'
-      })
+        })
         return
       }
 
@@ -90,8 +90,8 @@ export default function CreateIncident() {
     } catch (error) {
       console.error('Error picking media:', error)
       showSnackbar({
-          message: t('createIncident.errors.pickMedia'),
-          type: 'error'
+        message: t('createIncident.errors.pickMedia'),
+        type: 'error'
       })
     }
   }
@@ -124,8 +124,146 @@ export default function CreateIncident() {
     } catch (error) {
       console.error('Error taking photo:', error)
       showSnackbar({
-          message: t('createIncident.errors.takePhoto'),
-          type: 'error'
+        message: t('createIncident.errors.takePhoto'),
+        type: 'error'
+      })
+    }
+  }
+
+  const getCurrentLocation = async () => {
+    try {
+      // Step 1: Check current permission status
+      let { status } = await Location.getForegroundPermissionsAsync()
+
+      if (status !== 'granted') {
+        // Request permission if not granted
+        const permissionResult = await Location.requestForegroundPermissionsAsync()
+        status = permissionResult.status
+
+        if (status !== 'granted') {
+          showSnackbar({
+            message: t('createIncident.errors.locationPermission'),
+            type: 'warning'
+          })
+          return
+        }
+      }
+
+      // Step 2: Check if location services are enabled
+      const isEnabled = await Location.hasServicesEnabledAsync()
+
+      if (!isEnabled) {
+        showAlert({
+          message: 'Location services are turned off. Please enable location in your device settings and try again.',
+          icon: MapPin,
+          iconColor: '#F59E0B',
+          iconBgColor: '#FEF3C7',
+          buttons: [
+            { text: 'OK', onPress: () => { }, style: 'default' }
+          ]
+        })
+        return
+      }
+
+      // Step 3: Show loading state
+      showSnackbar({
+        message: 'Getting your location...',
+        type: 'info',
+        duration: 2000
+      })
+
+      // Step 4: Get location with timeout and retry
+      let loc
+      try {
+        loc = await Promise.race([
+          Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          }),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('timeout')), 15000)
+          )
+        ]) as Location.LocationObject
+      } catch (err: any) {
+        if (err.message === 'timeout') {
+          // Retry with lower accuracy
+          loc = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Low,
+          })
+        } else {
+          throw err
+        }
+      }
+
+      const { latitude, longitude } = loc.coords
+
+      // Step 5: Get address with error handling
+      let formattedAddress = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
+
+      try {
+        const address = await Location.reverseGeocodeAsync({
+          latitude,
+          longitude,
+        })
+
+        if (address && address[0]) {
+          const isPlusCode = (str: string | null) => {
+            if (!str) return false
+            return /^[A-Z0-9]{4}\+[A-Z0-9]{2,3}$/.test(str)
+          }
+
+          const addressParts = [
+            address[0].city,
+            address[0].district,
+            address[0].subregion,
+            address[0].region,
+            address[0].street,
+            address[0].name
+          ].filter(part => {
+            if (!part) return false
+            if (part === 'null' || part === 'undefined') return false
+            if (isPlusCode(part)) return false
+            return true
+          })
+
+          if (addressParts.length > 0) {
+            formattedAddress = addressParts.slice(0, 2).join(', ')
+          }
+        }
+      } catch (addressError) {
+        console.log('Reverse geocoding failed, using coordinates')
+      }
+
+      // Step 6: Update state
+      const locationData: LocationData = {
+        latitude,
+        longitude,
+        address: formattedAddress
+      }
+
+      setCurrentLocation(locationData)
+      setLocation(formattedAddress)
+
+      showSnackbar({
+        message: '✅ GPS location detected successfully',
+        type: 'success',
+        duration: 2000
+      })
+
+    } catch (error: any) {
+      console.error('❌ Error getting GPS location:', error)
+
+      let errorMessage = t('createIncident.errors.gpsLocation')
+
+      if (error.code === 'E_LOCATION_SERVICES_DISABLED') {
+        errorMessage = 'Location services are disabled. Please enable them in your device settings.'
+      } else if (error.code === 'E_LOCATION_UNAVAILABLE') {
+        errorMessage = 'Location is temporarily unavailable. Please try again.'
+      }
+
+      showSnackbar({
+        message: errorMessage,
+        type: 'error',
+        duration: 3000
       })
     }
   }
@@ -159,9 +297,9 @@ export default function CreateIncident() {
     } catch (error) {
       console.error('Error recording video:', error)
       showSnackbar({
-          message: t('createIncident.errors.recordVideo'),
-          type: 'error'
-        })
+        message: t('createIncident.errors.recordVideo'),
+        type: 'error'
+      })
     }
   }
 
@@ -184,15 +322,15 @@ export default function CreateIncident() {
   }
 
   const handleSubmit = async () => {
-    if (uploading) return 
-    
+    if (uploading) return
+
     if (!incidentType || !location.trim() || !description.trim()) {
       showSnackbar({
         message: t('createIncident.errors.fillRequired'),
         type: 'error',
         duration: 3000
       })
-      return 
+      return
     }
 
     if (!auth.currentUser) {
@@ -385,78 +523,7 @@ export default function CreateIncident() {
 
               <TouchableOpacity
                 style={styles.gpsButton}
-                onPress={async () => {
-                  try {
-                    const { status } = await Location.requestForegroundPermissionsAsync()
-                    if (status !== 'granted') {
-                      showSnackbar({
-                        message: t('createIncident.errors.locationPermission'),
-                        type: 'warning'
-                      })
-                      return
-                    }
-                    const loc = await Location.getCurrentPositionAsync({
-                      accuracy: Location.Accuracy.Balanced
-                    })
-
-                    const address = await Location.reverseGeocodeAsync({
-                      latitude: loc.coords.latitude,
-                      longitude: loc.coords.longitude,
-                    })
-                    if (address[0]) {
-                      const isPlusCode = (str: string | null) => {
-                        if (!str) return false
-                        return /^[A-Z0-9]{4}\+[A-Z0-9]{2,3}$/.test(str)
-                      }
-                      const addressParts = [
-                        address[0].city,       
-                        address[0].district,    
-                        address[0].subregion,  
-                        address[0].region,       
-                        address[0].street,     
-                        address[0].name          
-                      ].filter(part => {
-                        if (!part) return false
-                        if (part === 'null' || part === 'undefined') return false
-                        if (isPlusCode(part)) return false 
-                        return true
-                      })
-                      
-                      const formattedAddress = addressParts.length > 0
-                        ? addressParts.slice(0, 2).join(', ')
-                        : `${loc.coords.latitude.toFixed(6)}, ${loc.coords.longitude.toFixed(6)}`
-                      const locationData: LocationData = {
-                        latitude: loc.coords.latitude,
-                        longitude: loc.coords.longitude,
-                        address: formattedAddress
-                      }
-                      setCurrentLocation(locationData)
-                      setLocation(formattedAddress)
-                      showSnackbar({
-                        message: 'GPS location detected successfully',
-                        type: 'success',
-                        duration: 2000
-                      })
-                    } else {
-                      const coordsString = `${loc.coords.latitude.toFixed(6)}, ${loc.coords.longitude.toFixed(6)}`
-
-                      const locationData: LocationData = {
-                        latitude: loc.coords.latitude,
-                        longitude: loc.coords.longitude,
-                        address: coordsString
-                      }
-
-                      setCurrentLocation(locationData)
-                      setLocation(coordsString)
-                    }
-                  } catch (error) {
-                    console.error('Error getting GPS location:', error)
-                    showSnackbar({
-                        message: t('createIncident.errors.gpsLocation'),
-                        type: 'error'
-                    })
-                  }
-                }}
+                onPress={getCurrentLocation}
               >
                 <MapPinned size={18} color="#FF6B35" />
               </TouchableOpacity>
@@ -936,7 +1003,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   submitButtonLoading: {
-    opacity: 0.7, 
+    opacity: 0.7,
   },
   submitButtonText: {
     color: '#FFFFFF',
