@@ -1,13 +1,14 @@
 import { auth, db } from '@/config/firebaseConfig'
 import { useRouter } from 'expo-router'
 import { collection, updateDoc, getDoc, getDocs, arrayUnion, arrayRemove, deleteDoc, doc, onSnapshot, orderBy, query, where } from 'firebase/firestore'
-import { BookOpen, Users, Award, CheckCircle, Clock, Edit, Eye, FileText, Plus, Search, Trash2, TrendingUp, Video, Bold, Activity } from 'lucide-react-native'
+import { BookOpen, Users, Award, CheckCircle, Clock, Edit, Eye, FileText, Plus, Search, Trash2, TrendingUp, Video, Bold, Activity, Languages } from 'lucide-react-native'
 import React, { useEffect, useState } from 'react'
 import { ActivityIndicator, Alert, FlatList, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useSnackbar } from '@/contexts/SnackbarContext'  
 import { sendNotification } from '@/utils/notifications'
 import { useLanguage } from '@/providers/languageContext'
+import { translateText, translateBatch, clearTranslationCache } from '@/utils/googleTranslate' // Added
 
 interface Course {
   id: string
@@ -22,7 +23,7 @@ interface Course {
 
 export default function Training() {
   const router = useRouter()
-  const { t } = useLanguage()
+  const { language, t } = useLanguage()
   const [activeTab, setActiveTab] = useState<'view' | 'create' | 'analytics'>('view')
   const [courses, setCourses] = useState<Course[]>([])
   const [filteredCourses, setFilteredCourses] = useState<Course[]>([])
@@ -33,6 +34,10 @@ export default function Training() {
   const [courseProgress, setCourseProgress] = useState<Map<string, { completed: number; total: number }>>(new Map())
   const { showSnackbar } = useSnackbar()
   const [userRole, setUserRole] = useState<'Employee' | 'Instructor'>('Employee');
+
+  // Translation State - New
+  const [translatedCourses, setTranslatedCourses] = useState<Map<string, { title: string; description: string }>>(new Map())
+  const [isTranslating, setIsTranslating] = useState(false)
 
   // Analytics state
   const [analyticsData, setAnalyticsData] = useState<{
@@ -73,7 +78,7 @@ export default function Training() {
   // Update the useEffect to use emails
   useEffect(() => {
     if (!auth.currentUser || !auth.currentUser.email) return
-    // Fetch user document using EMAIL as document ID
+    
     const userDocRef = doc(db, 'users', auth.currentUser.email)
     const userUnsubscribe = onSnapshot(userDocRef, (docSnap) => {
       if (docSnap.exists()) {
@@ -82,7 +87,7 @@ export default function Training() {
         setEnrolledCourses(enrolledIds)
       }
     })
-    // Fetch all courses
+    
     const q = query(
       collection(db, 'courses'),
       orderBy('createdAt', 'desc')
@@ -110,6 +115,56 @@ export default function Training() {
       coursesUnsubscribe()
     }
   }, [])
+
+  // Translation Effect - Translate all courses when language changes
+  useEffect(() => {
+    const translateAllCourses = async () => {
+      if (courses.length === 0 || language === 'en') {
+        setTranslatedCourses(new Map())
+        clearTranslationCache()
+        return
+      }
+
+      console.log(`🌐 Translating ${courses.length} courses to ${language}...`)
+      setIsTranslating(true)
+
+      try {
+        const translationsMap = new Map<string, { title: string; description: string }>()
+
+        // Translate courses in batches for better performance
+        const batchSize = 5
+        for (let i = 0; i < courses.length; i += batchSize) {
+          const batch = courses.slice(i, i + batchSize)
+          
+          const textsToTranslate = batch.flatMap(course => [course.title, course.description])
+          const translations = await translateBatch(textsToTranslate, language)
+          
+          batch.forEach((course, index) => {
+            const titleIndex = index * 2
+            const descIndex = index * 2 + 1
+            
+            translationsMap.set(course.id, {
+              title: translations[titleIndex],
+              description: translations[descIndex]
+            })
+          })
+        }
+
+        setTranslatedCourses(translationsMap)
+        console.log('✅ All courses translated!')
+      } catch (error) {
+        console.error('❌ Translation error:', error)
+        Alert.alert(
+          t('common.error'),
+          'Failed to translate courses. Showing original text.'
+        )
+      } finally {
+        setIsTranslating(false)
+      }
+    }
+
+    translateAllCourses()
+  }, [courses, language])
 
   // Fetch progress for enrolled courses
   useEffect(() => {
@@ -144,14 +199,18 @@ export default function Training() {
     let filtered = courses
 
     if (searchQuery) {
-      filtered = filtered.filter(course => 
-        course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        course.description.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+      filtered = filtered.filter(course => {
+        const translatedCourse = translatedCourses.get(course.id)
+        const titleToSearch = translatedCourse?.title || course.title
+        const descToSearch = translatedCourse?.description || course.description
+        
+        return titleToSearch.toLowerCase().includes(searchQuery.toLowerCase()) ||
+               descToSearch.toLowerCase().includes(searchQuery.toLowerCase())
+      })
     }
 
     setFilteredCourses(filtered)
-  }, [courses, searchQuery])
+  }, [courses, searchQuery, translatedCourses])
 
   // Fetch analytics when analytics tab is active
   useEffect(() => {
@@ -184,8 +243,9 @@ export default function Training() {
       const courseIds = myCourses.map(c => c.id);
       const coursesMap = new Map();
       myCourses.forEach(course => {
+        const translatedCourse = translatedCourses.get(course.id)
         coursesMap.set(course.id, {
-          title: course.title,
+          title: translatedCourse?.title || course.title,
           subtopicsCount: course.subtopicsCount || 0
         });
       });
@@ -405,6 +465,11 @@ export default function Training() {
       : 0
     const isCompleted = progressPercentage === 100
 
+    // Use translated content if available
+    const translatedCourse = translatedCourses.get(item.id)
+    const displayTitle = translatedCourse?.title || item.title
+    const displayDescription = translatedCourse?.description || item.description
+
     return (
       <TouchableOpacity 
         style={styles.courseCard}
@@ -434,12 +499,17 @@ export default function Training() {
                 </View>
               )}
             </View>
+            {language !== 'en' && translatedCourse && (
+              <View style={styles.translatedBadge}>
+                <Languages size={12} color="#3B82F6" />
+              </View>
+            )}
           </View>
 
-          <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
+          <Text style={styles.cardTitle} numberOfLines={2}>{displayTitle}</Text>
 
           <Text style={styles.descriptionText} numberOfLines={3}>
-            {item.description}
+            {displayDescription}
           </Text>
 
           <View style={styles.cardFooter}>
@@ -490,7 +560,7 @@ export default function Training() {
                 ]}
                 onPress={(e) => {
                   e.stopPropagation()
-                  handleEnrollment(item.id, item.title)
+                  handleEnrollment(item.id, displayTitle)
                 }}
               >
                 <Text style={[
@@ -560,6 +630,18 @@ export default function Training() {
                 )}
               </View>
             </View>
+
+            {/* Translation Indicator */}
+            {isTranslating && (
+              <View style={styles.translatingBanner}>
+                <ActivityIndicator size="small" color="#3B82F6" />
+                <Text style={styles.translatingText}>
+                  {language === 'si' ? 'පාඨමාලා පරිවර්තනය කරමින්...' : 
+                   language === 'ta' ? 'பாடநெறிகளை மொழிபெயர்க்கிறது...' : 
+                   'Translating courses...'}
+                </Text>
+              </View>
+            )}
 
             {searchQuery.length > 0 && (
               <View style={styles.resultsHeader}>
@@ -1408,5 +1490,27 @@ const styles = StyleSheet.create({
   loadingSubtext: {
     fontSize: 14,
     color: '#9CA3AF',
+  },
+    translatingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
+  translatingText: {
+    fontSize: 14,
+    color: '#1E40AF',
+    fontWeight: '500',
+  },
+  translatedBadge: {
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
   },
 })

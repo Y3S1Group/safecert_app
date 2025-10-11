@@ -402,7 +402,7 @@ export default function Home() {
       icon: Award,
       color: '#1B365D',
       bgColor: 'rgba(27, 54, 93, 0.1)',
-      onPress: () => router.push('/_sitemap')
+      onPress: () => router.push('/certificates')
     },
     {
       id: 'report',
