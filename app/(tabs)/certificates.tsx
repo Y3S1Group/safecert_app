@@ -141,10 +141,12 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#FFFFFF',
-    paddingVertical: 20,
+    paddingTop: 20,
+    paddingBottom: 10,
     paddingHorizontal: 24,
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
+    marginTop: 16,
   },
   headerTitle: {
     fontSize: 24,

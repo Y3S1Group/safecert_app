@@ -297,6 +297,12 @@ export default function profile() {
   return (
     <>
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle}>{t('profile.title')}</Text>
+      </View>
+      </View>
       {/* Profile Header */}
       <View style={styles.profileCard}>
         <View style={styles.profileHeader}>
@@ -451,8 +457,23 @@ export default function profile() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
-    marginTop: 40,
+  },
+  header: {
+    flexDirection: 'row',
+    paddingTop: 10,
+    paddingBottom: 10,
+    paddingHorizontal: 20,
+    borderBottomWidth: 0.9,
+    borderBottomColor: '#E5E7EB',
+  },
+  headerContent: {
+    flex: 1,
+    marginTop: 8,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#111827',
   },
   centerContent: {
     justifyContent: 'center',
@@ -478,6 +499,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     borderWidth: 2,
     borderColor: '#E5E7EB',
+    marginTop: 20,
   },
   profileHeader: {
     flexDirection: 'row',
