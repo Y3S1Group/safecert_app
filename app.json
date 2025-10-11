@@ -80,6 +80,12 @@
     },
     "assetBundlePatterns": [
       "**/*"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "a84456e8-91af-4027-a224-125cc5a5de47"
+      }
+    }
   }
 }
