@@ -1,10 +1,12 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import React from 'react';
 import { useRouter } from 'expo-router';
-import { Bell, User, BookOpen } from 'lucide-react-native';
+import { Bell, User, BookOpen, ArrowLeft } from 'lucide-react-native';
+import { useLanguage } from '@/providers/languageContext'; // NEW
 
 export default function TeacherDashboard() {
   const router = useRouter();
+  const { t } = useLanguage(); // NEW
 
   const handleBackToProfile = () => {
     router.replace('/(tabs)/profile');
@@ -26,50 +28,48 @@ export default function TeacherDashboard() {
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Teacher Dashboard</Text>
+        <Text style={styles.headerTitle}>{t('instructorDash.title')}</Text>
       </View>
 
       {/* Quick Actions */}
       <View style={styles.sectionCard}>
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
+        <Text style={styles.sectionTitle}>{t('instructorDash.quickActions')}</Text>
 
         <TouchableOpacity style={styles.actionItem} onPress={handleCertificates}>
           <Bell size={20} color="#6B7280" />
-          <Text style={styles.actionText}>Certificates</Text>
+          <Text style={styles.actionText}>{t('instructorDash.certificates')}</Text>
         </TouchableOpacity>
 
         <View style={styles.divider} />
 
         <TouchableOpacity style={styles.actionItem} onPress={handleGenerateProfile}>
           <User size={20} color="#6B7280" />
-          <Text style={styles.actionText}>Generate Certificates</Text>
+          <Text style={styles.actionText}>{t('instructorDash.generateCertificates')}</Text>
         </TouchableOpacity>
 
         <View style={styles.divider} />
 
         <TouchableOpacity style={styles.actionItem} onPress={handleCreateCourse}>
           <BookOpen size={20} color="#6B7280" />
-          <Text style={styles.actionText}>Create Course</Text>
+          <Text style={styles.actionText}>{t('instructorDash.createCourse')}</Text>
         </TouchableOpacity>
 
-                <View style={styles.divider} />
+        <View style={styles.divider} />
 
         <TouchableOpacity style={styles.actionItem} onPress={handleBackToProfile}>
-          <BookOpen size={20} color="#6B7280" />
-          <Text style={styles.actionText}>Back</Text>
+          <ArrowLeft size={20} color="#6B7280" />
+          <Text style={styles.actionText}>{t('common.back')}</Text>
         </TouchableOpacity>
       </View>
 
       {/* Footer */}
       <View style={styles.footer}>
-        <Text style={styles.footerText}>Safety App v1.0.0</Text>
-        <Text style={styles.footerText}>© 2025 Safety First Inc.</Text>
+        <Text style={styles.footerText}>{t('profile.appVersion')}</Text>
+        <Text style={styles.footerText}>{t('profile.copyright')}</Text>
       </View>
     </ScrollView>
   );
 }
-
-
 
 const styles = StyleSheet.create({
   container: {
