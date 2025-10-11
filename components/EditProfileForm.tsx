@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { TextInput } from 'react-native-paper';
+import { useLanguage } from '@/providers/languageContext';
 
 interface EditProfileFormProps {
   formData: {
@@ -13,10 +14,12 @@ interface EditProfileFormProps {
 }
 
 export default function EditProfileForm({ formData, onFormChange }: EditProfileFormProps) {
+  const { t } = useLanguage();
+
   return (
     <View style={styles.container}>
       <TextInput
-        label="Full Name"
+        label={t('profile.fullName')}
         mode="outlined"
         style={styles.input}
         value={formData.name}
@@ -33,7 +36,7 @@ export default function EditProfileForm({ formData, onFormChange }: EditProfileF
       />
 
       <TextInput
-        label="Phone"
+        label={t('profile.phone')}
         mode="outlined"
         style={styles.input}
         value={formData.phone}
@@ -51,7 +54,7 @@ export default function EditProfileForm({ formData, onFormChange }: EditProfileF
       />
 
       <TextInput
-        label="Department"
+        label={t('profile.department')}
         mode="outlined"
         style={styles.input}
         value={formData.department}
@@ -68,7 +71,7 @@ export default function EditProfileForm({ formData, onFormChange }: EditProfileF
       />
 
       <TextInput
-        label="Job Title"
+        label={t('profile.jobTitle')}
         mode="outlined"
         style={styles.input}
         value={formData.jobTitle}
