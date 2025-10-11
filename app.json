@@ -2,7 +2,7 @@
   "expo": {
     "name": "Safe Cert",
     "slug": "Safecert",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/safecertLogo.png",
     "scheme": "safecertapp",
@@ -63,7 +63,7 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/safecertLogo.png",
-          "imageWidth": 60,
+          "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
           "dark": {
