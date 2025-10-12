@@ -210,7 +210,8 @@
     "helpSupport": "Help & Support",
     "appVersion": "Safe Cert v1.0.0",
     "copyright": "© 2025 Safety First Inc.",
-    "jobTitle": "Job Title"
+    "jobTitle": "Job Title",
+    "switchSuccess": "Switched Successfully"
   },
   "instructorDash": {
     "title": "Teacher Dashboard",
@@ -585,9 +586,17 @@
     }
   },
   "notifications": {
-    "JustNow": "Just Now",
     "title": "Notifications",
     "noNotifications": "No notifications",
-    "allCaughtUp": "You're all caught up!"
+    "allCaughtUp": "You're all caught up!",
+    "justNow": "Just now",
+    "markAllRead": "Mark all read",
+    "deleteAll": "Delete all",
+    "deleteAllConfirm": "Are you sure you want to delete all notifications? This action cannot be undone.",
+    "markedAllAsRead": "All notifications marked as read",
+    "deletedAll": "All notifications deleted",
+    "noUnreadMessages": "No unread notifications",
+    "markAllError": "Failed to mark all as read",
+    "deleteAllError": "Failed to delete all notifications"
   }
 }
