@@ -10,7 +10,7 @@
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/splash-screen2.png",
-      "resizeMode": "cover",
+      "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
@@ -18,14 +18,11 @@
       "bundleIdentifier": "com.yourcompany.safecert",
       "splash": {
         "image": "./assets/images/splash-screen2.png",
-        "resizeMode": "cover",
+        "resizeMode": "contain",
         "backgroundColor": "#ffffff",
         "dark": {
           "backgroundColor": "#ffffff"
         }
-      },
-      "statusBar": {
-        "barStyle": "light-content" 
       }
     },
     "android": {
@@ -47,7 +44,7 @@
       ],
       "splash": {
         "image": "./assets/images/splash-screen2.png",
-        "resizeMode": "cover",
+        "resizeMode": "contain",
         "backgroundColor": "#ffffff",
         "dark": {
           "backgroundColor": "#ffffff"
@@ -56,11 +53,6 @@
       "edgeToEdgeEnabled": false,
       "predictiveBackGestureEnabled": false
     },
-    "statusBar": {
-        "backgroundColor": "#FF6B35", 
-        "barStyle": "light-content", 
-        "translucent": false        
-      },
     "web": {
       "output": "static",
       "favicon": "./assets/images/safecertLogo.png"
@@ -71,7 +63,7 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-screen2.png",
-          "resizeMode": "cover",
+          "resizeMode": "contain",
           "backgroundColor": "#ffffff",
           "dark": {
             "backgroundColor": "#ffffff"
