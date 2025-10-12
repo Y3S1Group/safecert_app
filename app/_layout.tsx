@@ -108,7 +108,7 @@ export default function RootLayout() {
       <OnboardingContext.Provider value={{ completeOnboarding }}>
         <AlertProvider>
           <SnackbarProvider>
-            <StatusBar style='inverted' />
+            <StatusBar style='auto' />
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="(onboarding)" />
               <Stack.Screen name="(auth)" />
