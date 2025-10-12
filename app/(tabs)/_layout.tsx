@@ -1,9 +1,12 @@
 import { Tabs } from 'expo-router';
 import { Home, Award, FileText, GraduationCap, User, FileTextIcon } from 'lucide-react-native';
 import { useLanguage } from '@/providers/languageContext';
+import { Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabLayout() {
     const { t } = useLanguage();
+    const insets = useSafeAreaInsets();
 
     return (
         <Tabs 
@@ -15,13 +18,16 @@ export default function TabLayout() {
                     backgroundColor: '#FFFFFF',
                     borderTopWidth: 0,
                     borderRadius: 25,
-                    marginHorizontal: 10,
-                    marginBottom: 10,
-                    paddingBottom: 5,
-                    paddingTop: 5,
-                    height: 65,
+                    marginHorizontal: 5,
+                    marginBottom: Platform.OS === 'ios' ? 12 : 6,
+                    paddingBottom: insets.bottom > 0 ? insets.bottom : 10, 
+                    paddingTop: 8,
+                    height: 60 + (insets.bottom > 0 ? insets.bottom : 10),
                     position: 'absolute',
-                    shadowColor: '#000', 
+                    left: 0,
+                    right: 0,
+                    bottom: 0, // 
+                    shadowColor: '#000',
                     shadowOffset: {
                         width: 0,
                         height: 4,
@@ -29,10 +35,6 @@ export default function TabLayout() {
                     shadowOpacity: 0.1,
                     shadowRadius: 8,
                     elevation: 8,
-                },
-                tabBarLabelStyle: {
-                    fontSize: 10,
-                    fontWeight: '500',
                 },
             }}
         >
