@@ -2,7 +2,7 @@
   "expo": {
     "name": "Safe Cert",
     "slug": "Safecert",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "orientation": "portrait",
     "icon": "./assets/images/safecertLogo.png",
     "scheme": "safecertapp",
@@ -27,7 +27,7 @@
     },
     "android": {
       "package": "com.yourcompany.safecert",
-      "versionCode": 4,
+      "versionCode": 5,
       "adaptiveIcon": {
         "backgroundColor": "#ffffff",
         "foregroundImage": "./assets/images/safecertLogo.png"
