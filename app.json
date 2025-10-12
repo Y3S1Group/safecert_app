@@ -2,34 +2,34 @@
   "expo": {
     "name": "Safe Cert",
     "slug": "Safecert",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/safecertLogo.png",
     "scheme": "safecertapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/safecertLogo.png",
-      "resizeMode": "contain",
+      "image": "./assets/images/splash-screen.png",
+      "resizeMode": "cover",
       "backgroundColor": "#ffffff"
     },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.yourcompany.safecert",
       "splash": {
-        "image": "./assets/images/safecertLogo.png",
-        "resizeMode": "contain",
+        "image": "./assets/images/splash-screen.png",
+        "resizeMode": "cover",
         "backgroundColor": "#ffffff",
         "dark": {
-          "backgroundColor": "#000000"
+          "backgroundColor": "#ffffff"
         }
       }
     },
     "android": {
       "package": "com.yourcompany.safecert",
-      "versionCode": 1,
+      "versionCode": 3,
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#ffffff",
         "foregroundImage": "./assets/images/safecertLogo.png"
       },
       "permissions": [
@@ -43,14 +43,14 @@
         "RECORD_AUDIO"
       ],
       "splash": {
-        "image": "./assets/images/safecertLogo.png",
-        "resizeMode": "contain",
+        "image": "./assets/images/splash-screen.png",
+        "resizeMode": "cover",
         "backgroundColor": "#ffffff",
         "dark": {
-          "backgroundColor": "#000000"
+          "backgroundColor": "#ffffff"
         }
       },
-      "edgeToEdgeEnabled": true,
+      "edgeToEdgeEnabled": false,
       "predictiveBackGestureEnabled": false
     },
     "web": {
@@ -62,12 +62,11 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/safecertLogo.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
+          "image": "./assets/images/splash-screen.png",
+          "resizeMode": "cover",
           "backgroundColor": "#ffffff",
           "dark": {
-            "backgroundColor": "#000000"
+            "backgroundColor": "#ffffff"
           }
         }
       ],
