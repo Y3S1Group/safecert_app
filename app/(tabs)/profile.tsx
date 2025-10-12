@@ -1,6 +1,6 @@
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native'
-import React, { useEffect, useState } from 'react'
-import { useRouter } from 'expo-router'
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { useRouter } from 'expo-router';
 import { auth, db } from '@/config/firebaseConfig';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
@@ -8,11 +8,11 @@ import { ArrowLeftRight, Bell, Building, CheckCircle, ChevronRight, HelpCircle, 
 import CustomModal from '@/components/CustomModal';
 import EditProfileForm from '@/components/EditProfileForm';
 import { ActivityIndicator } from 'react-native-paper';
-import CustomeAlert from '@/components/CustomeAlert';
 import { useAlert } from '@/contexts/AlertContext';
 import { useSnackbar } from '@/contexts/SnackbarContext';
-import { useLanguage } from '@/providers/languageContext'; // New
-import LanguageSwitcher from '@/components/LanguageSwitcher'; // New
+import { useLanguage } from '@/providers/languageContext';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
+import Constants from 'expo-constants';
 
 interface UserInfo {
   name: string;
@@ -23,26 +23,33 @@ interface UserInfo {
   uid: string;
 }
 
+interface Course {
+  id: string;
+  title: string;
+  subtopicsCount: number;
+  certificateTemplateId?: string;
+}
+
 export default function profile() {
   const router = useRouter();
-  const { t } = useLanguage(); // New
+  const { t } = useLanguage();
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
-  const [languageModalVisible, setLanguageModalVisible] = useState(false); // New
-  const [editForm, setEditForm] = useState({
-    name: '',
-    phone: '',
-    department: '',
-    jobTitle: ''
-  });
-  const { showAlert } = useAlert()
-  const { showSnackbar } = useSnackbar()
+  const [languageModalVisible, setLanguageModalVisible] = useState(false);
+  const [editForm, setEditForm] = useState({ name: '', phone: '', department: '', jobTitle: '' });
+  const [userLevel, setUserLevel] = useState(0);
+  const [completedCoursesCount, setCompletedCoursesCount] = useState(0);
+  const { showAlert } = useAlert();
+  const { showSnackbar } = useSnackbar();
+
+  const appVersion = Constants.expoConfig?.version || '1.0.0';
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         await fetchUserData(user.uid, user.email || '');
+        await fetchUserLevel();
       } else {
         setUserInfo(null);
         setLoading(false);
@@ -54,55 +61,98 @@ export default function profile() {
   const fetchUserData = async (uid: string, email: string) => {
     try {
       const userDoc = await getDoc(doc(db, 'users', email));
-
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        const userInfoData = {
-          name: userData.name || t('profile.name'),
-          email: email,
-          phone: userData.phone || t('common.notProvided'),
-          department: userData.department || t('common.notAssigned'),
-          jobTitle: userData.jobTitle || t('profile.employee'),
-          uid: uid
-        };
-        setUserInfo(userInfoData);
-        setEditForm({
-          name: userInfoData.name,
-          phone: userInfoData.phone,
-          department: userInfoData.department,
-          jobTitle: userInfoData.jobTitle
-        });
-      } else {
-        const defaultUserInfo = {
-          name: t('profile.name'),
-          email: email,
-          phone: t('common.notProvided'),
-          department: t('common.notAssigned'),
-          jobTitle: t('profile.employee'),
-          uid: uid
-        };
-        setUserInfo(defaultUserInfo);
-        setEditForm({
-          name: defaultUserInfo.name,
-          phone: defaultUserInfo.phone,
-          department: defaultUserInfo.department,
-          jobTitle: defaultUserInfo.jobTitle
-        });
-      }
+      let userData = userDoc.exists() ? userDoc.data() : {};
+      const userInfoData: UserInfo = {
+        name: userData?.name || t('profile.name'),
+        email: email,
+        phone: userData?.phone || t('common.notProvided'),
+        department: userData?.department || t('common.notAssigned'),
+        jobTitle: userData?.jobTitle || t('profile.employee'),
+        uid: uid,
+      };
+      setUserInfo(userInfoData);
+      setEditForm({
+        name: userInfoData.name,
+        phone: userInfoData.phone,
+        department: userInfoData.department,
+        jobTitle: userInfoData.jobTitle,
+      });
     } catch (error) {
       console.error('Error fetching user data:', error);
-      showSnackbar({
-        message: t('common.errorLoadingData'),
-        type: 'error'
-      })
+      showSnackbar({ message: t('common.errorLoadingData'), type: 'error' });
     } finally {
       setLoading(false);
     }
   };
 
-  const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase();
-  }
+  const fetchUserLevel = async () => {
+    try {
+      const userEmail = auth.currentUser?.email;
+      if (!userEmail) {
+        console.log('No user email found');
+        return;
+      }
+
+      // Get user's enrolled courses
+      const userDocRef = doc(db, 'users', userEmail);
+      const userDoc = await getDoc(userDocRef);
+      
+      if (!userDoc.exists()) {
+        console.log('User document not found');
+        return;
+      }
+
+      const userData = userDoc.data();
+      const enrolledCourseIds = userData.courses || [];
+
+      if (enrolledCourseIds.length === 0) {
+        console.log('No enrolled courses');
+        return;
+      }
+
+      // Fetch all enrolled courses data
+      const coursesData: Course[] = [];
+      for (const courseId of enrolledCourseIds) {
+        const courseDoc = await getDoc(doc(db, 'courses', courseId));
+        if (courseDoc.exists()) {
+          coursesData.push({
+            id: courseDoc.id,
+            title: courseDoc.data().title,
+            subtopicsCount: courseDoc.data().subtopicsCount || 0,
+            certificateTemplateId: courseDoc.data().certificateTemplateId
+          });
+        }
+      }
+
+      // Count completed courses
+      let completedCount = 0;
+
+      for (const course of coursesData) {
+        const progressDocRef = doc(db, 'users', userEmail, 'courseProgress', course.id);
+        const progressDoc = await getDoc(progressDocRef);
+
+        if (progressDoc.exists()) {
+          const progressData = progressDoc.data();
+          const completedSubtopicsCount = (progressData.completedSubtopics || []).length;
+          
+          // Check if course is completed
+          if (completedSubtopicsCount > 0 && completedSubtopicsCount === course.subtopicsCount) {
+            completedCount += 1;
+          }
+        }
+      }
+
+      setCompletedCoursesCount(completedCount);
+      setUserLevel(Math.floor((completedCount + 1) / 2));
+
+    } catch (error) {
+      console.error('Error fetching user level:', error);
+    }
+  };
+
+  const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('').toUpperCase();
+
+  const getNextLevelRequirement = (level: number) => level * 2 + 1;
 
   const handleLogout = async () => {
     showAlert({
@@ -111,35 +161,14 @@ export default function profile() {
       iconColor: '#FF6B35',
       iconBgColor: '#FEE2E2',
       buttons: [
-        {
-          text: t('common.cancel'),
-          style: 'cancel',
-          onPress: () => console.log('Cancelled')
-        },
-        {
-          text: t('auth.logout'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await signOut(auth)
-              router.replace('/(auth)/authScreen')
-            } catch (error) {
-              console.error('Error signing out:', error)
-            }
-          }
-        }
+        { text: t('common.cancel'), style: 'cancel', onPress: () => {} },
+        { text: t('auth.logout'), style: 'destructive', onPress: async () => { await signOut(auth); router.replace('/(auth)/authScreen'); } }
       ]
-    })
+    });
   };
 
-  const handleEditProfile = () => {
-    if (!userInfo) return;
-    setModalVisible(true);
-  };
-
-  const handleFormChange = (field: string, value: string) => {
-    setEditForm(prev => ({ ...prev, [field]: value }));
-  };
+  const handleEditProfile = () => userInfo && setModalVisible(true);
+  const handleFormChange = (field: string, value: string) => setEditForm(prev => ({ ...prev, [field]: value }));
 
   const handleSaveProfile = async () => {
     if (!userInfo) return;
@@ -150,13 +179,7 @@ export default function profile() {
         department: editForm.department,
         jobTitle: editForm.jobTitle
       });
-      setUserInfo(prev => prev ? {
-        ...prev,
-        name: editForm.name,
-        phone: editForm.phone,
-        department: editForm.department,
-        jobTitle: editForm.jobTitle
-      } : null);
+      setUserInfo(prev => prev ? { ...prev, ...editForm } : null);
       setModalVisible(false);
       showAlert({
         message: t('profile.updateSuccess'),
@@ -165,291 +188,149 @@ export default function profile() {
         iconBgColor: '#D1FAE5',
         autoClose: true,
         autoCloseDelay: 2000
-      })
+      });
     } catch (error) {
       console.error('Error updating profile:', error);
-      showSnackbar({
-        message: t('profile.updateError'),
-        type: 'error'
-      })
+      showSnackbar({ message: t('profile.updateError'), type: 'error' });
     }
   };
 
   const handleCancelEdit = () => {
-    if (userInfo) {
-      setEditForm({
-        name: userInfo.name,
-        phone: userInfo.phone,
-        department: userInfo.department,
-        jobTitle: userInfo.jobTitle
-      });
-    }
+    if (userInfo) setEditForm({ name: userInfo.name, phone: userInfo.phone, department: userInfo.department, jobTitle: userInfo.jobTitle });
     setModalVisible(false);
   };
 
   const handleSwitchToInstructor = async () => {
     if (!userInfo) return;
-
     showAlert({
       message: t('profile.switchConfirm'),
       icon: ArrowLeftRight,
       iconColor: '#FF6B35',
       iconBgColor: '#FEE2E2',
       buttons: [
+        { text: t('common.cancel'), style: 'cancel', onPress: () => {} },
         {
-          text: t('common.cancel'),
-          style: 'cancel',
-          onPress: () => console.log('Cancelled'),
-        },
-        {
-          text: t('profile.switch'),
-          style: 'default',
-          onPress: async () => {
+          text: t('profile.switch'), style: 'default', onPress: async () => {
             try {
-              // ✅ Update Firestore user jobTitle to "Instructor"
               const userRef = doc(db, 'users', userInfo.email);
               await updateDoc(userRef, { jobTitle: 'Instructor' });
-
-              // ✅ Update local state
               setUserInfo(prev => prev ? { ...prev, jobTitle: 'Instructor' } : null);
-
-              // ✅ Optional: show confirmation message
-              showAlert({
-                message: t('profile.switchSuccess') || 'You are now an Instructor!',
-                icon: CheckCircle,
-                iconColor: '#10B981',
-                iconBgColor: '#D1FAE5',
-                autoClose: true,
-                autoCloseDelay: 1500,
-              });
-
-              
-              setTimeout(() => {
-                router.replace('/(tabs)/profile');
-              }, 1500);
+              showAlert({ message: t('profile.switchSuccess'), icon: CheckCircle, iconColor: '#10B981', iconBgColor: '#D1FAE5', autoClose: true, autoCloseDelay: 1500 });
+              setTimeout(() => router.replace('/(tabs)/profile'), 1500);
             } catch (error) {
-              console.error('Error switching to instructor:', error);
-              showSnackbar({
-                message: t('profile.switchError') || 'Failed to switch role. Try again.',
-                type: 'error',
-              });
+              console.error('Error switching role:', error);
+              showSnackbar({ message: t('profile.switchError'), type: 'error' });
             }
-          },
-        },
-      ],
+          }
+        }
+      ]
     });
   };
 
+  const handleNotifications = () => showAlert({ message: t('profile.notificationsComingSoon'), icon: Bell, iconColor: '#FF6B35', iconBgColor: '#eeefeeff', autoClose: true, autoCloseDelay: 1200 });
+  const handlePrivacySecurity = () => showAlert({ message: t('profile.privacyComingSoon'), icon: LockIcon, iconColor: '#FF6B35', iconBgColor: '#eeefeeff', autoClose: true, autoCloseDelay: 1200 });
+  const handleHelpSupport = () => showAlert({ message: t('profile.helpComingSoon'), icon: HelpCircleIcon, iconColor: '#FF6B35', iconBgColor: '#eeefeeff', autoClose: true, autoCloseDelay: 1200 });
+  const handleLanguageSettings = () => setLanguageModalVisible(true);
 
-  const handleNotifications = () => {
-    showAlert({
-      message: t('profile.notificationsComingSoon'),
-      icon: Bell,
-      iconColor: '#FF6B35',
-      iconBgColor: '#eeefeeff',
-      autoClose: true,
-      autoCloseDelay: 1200
-    })
-  };
-  
-  const handlePrivacySecurity = () => {
-    showAlert({
-      message: t('profile.privacyComingSoon'),
-      icon: LockIcon,
-      iconColor: '#FF6B35',
-      iconBgColor: '#eeefeeff',
-      autoClose: true,
-      autoCloseDelay: 1200
-    })
-  };
-  
-  const handleHelpSupport = () => {
-    showAlert({
-      message: t('profile.helpComingSoon'),
-      icon: HelpCircleIcon,
-      iconColor: '#FF6B35',
-      iconBgColor: '#eeefeeff',
-      autoClose: true,
-      autoCloseDelay: 1200
-    })
-  };
+  if (loading) return <View style={[styles.container, styles.centerContent]}><ActivityIndicator size="small" color="#FF6B35" /></View>;
+  if (!userInfo) return <View style={[styles.container, styles.centerContent]}><Text style={styles.errorText}>{t('profile.unableToLoad')}</Text></View>;
 
-  const handleLanguageSettings = () => {
-    setLanguageModalVisible(true);
-  };
-
-  if (loading) {
-    return (
-      <View style={{ flex: 1, backgroundColor: '#F9FAFB', justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="small" color="#FF6B35" />
-      </View>
-    );
-  }
-
-  if (!userInfo) {
-    return (
-      <View style={[styles.container, styles.centerContent]}>
-        <Text style={styles.errorText}>{t('profile.unableToLoad')}</Text>
-      </View>
-    );
-  }
+  const currentLevel = userLevel;
+  const nextLevelRequirement = getNextLevelRequirement(currentLevel);
+  const progress = nextLevelRequirement > 0 ? completedCoursesCount / nextLevelRequirement : 0;
 
   return (
     <>
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>{t('profile.title')}</Text>
-      </View>
-      </View>
-      {/* Profile Header */}
-      <View style={styles.profileCard}>
-        <View style={styles.profileHeader}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{getInitials(userInfo.name)}</Text>
+      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerContent}><Text style={styles.headerTitle}>{t('profile.title')}</Text></View>
+        </View>
+
+        {/* Profile Header */}
+        <View style={styles.profileCard}>
+          <View style={styles.profileHeader}>
+            <View style={styles.avatar}><Text style={styles.avatarText}>{getInitials(userInfo.name)}</Text></View>
+            <View style={styles.profileInfo}>
+              <Text style={styles.profileName}>
+                {userInfo.name}{userInfo.jobTitle === 'Employee' && ` (Lvl ${currentLevel})`}
+              </Text>
+              <Text style={styles.profileJobTitle}>{userInfo.jobTitle}</Text>
+              {userInfo.jobTitle === 'Employee' && (
+                <>
+                  <View style={styles.progressBarBackground}>
+                    <View style={[styles.progressBarFill, { width: `${Math.min(progress * 100, 100)}%` }]} />
+                  </View>
+                  <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
+                    {completedCoursesCount}/{nextLevelRequirement} courses
+                  </Text>
+                </>
+              )}
+            </View>
           </View>
-          <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{userInfo.name}</Text>
-            <Text style={styles.profileJobTitle}>{userInfo.jobTitle}</Text>
+          <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
+            <Text style={styles.editButtonText}>{t('profile.editProfile')}</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Personal Info */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>{t('profile.personalInfo')}</Text>
+          <View style={styles.infoList}>
+            <View style={styles.infoItem}><User size={20} color="#6B7280" /><View style={styles.infoContent}><Text style={styles.infoLabel}>{t('profile.fullName')}</Text><Text style={styles.infoValue}>{userInfo.name}</Text></View></View>
+            <View style={styles.divider} />
+            <View style={styles.infoItem}><Mail size={20} color="#6B7280" /><View style={styles.infoContent}><Text style={styles.infoLabel}>{t('profile.email')}</Text><Text style={styles.infoValue}>{userInfo.email}</Text></View></View>
+            <View style={styles.divider} />
+            <View style={styles.infoItem}><Phone size={20} color="#6B7280" /><View style={styles.infoContent}><Text style={styles.infoLabel}>{t('profile.phone')}</Text><Text style={styles.infoValue}>{userInfo.phone}</Text></View></View>
+            <View style={styles.divider} />
+            <View style={styles.infoItem}><Building size={20} color="#6B7280" /><View style={styles.infoContent}><Text style={styles.infoLabel}>{t('profile.department')}</Text><Text style={styles.infoValue}>{userInfo.department}</Text></View></View>
           </View>
         </View>
-        <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
-          <Text style={styles.editButtonText}>{t('profile.editProfile')}</Text>
-        </TouchableOpacity>
-      </View>
 
-      {/* Personal Information */}
-      <View style={styles.sectionCard}>
-        <Text style={styles.sectionTitle}>{t('profile.personalInfo')}</Text>
-        <View style={styles.infoList}>
-          <View style={styles.infoItem}>
-            <User size={20} color="#6B7280" />
-            <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>{t('profile.fullName')}</Text>
-              <Text style={styles.infoValue}>{userInfo.name}</Text>
-            </View>
-          </View>
-          <View style={styles.divider} />
-          <View style={styles.infoItem}>
-            <Mail size={20} color="#6B7280" />
-            <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>{t('profile.email')}</Text>
-              <Text style={styles.infoValue}>{userInfo.email}</Text>
-            </View>
-          </View>
-          <View style={styles.divider} />
-          <View style={styles.infoItem}>
-            <Phone size={20} color="#6B7280" />
-            <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>{t('profile.phone')}</Text>
-              <Text style={styles.infoValue}>{userInfo.phone}</Text>
-            </View>
-          </View>
-          <View style={styles.divider} />
-          <View style={styles.infoItem}>
-            <Building size={20} color="#6B7280" />
-            <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>{t('profile.department')}</Text>
-              <Text style={styles.infoValue}>{userInfo.department}</Text>
-            </View>
-          </View>
-        </View>
-      </View>
+        {/* Settings */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>{t('profile.settings')}</Text>
 
-      {/* Settings */}
-      <View style={styles.sectionCard}>
-        <Text style={styles.sectionTitle}>{t('profile.settings')}</Text>
-        
-        {/* Language Setting - NEW */}
-        <TouchableOpacity style={styles.settingItem} onPress={handleLanguageSettings}>
-          <View style={styles.settingLeft}>
-            <Languages size={20} color="#6B7280" />
-            <Text style={styles.settingText}>{t('profile.changeLanguage')}</Text>
-          </View>
-          <ChevronRight size={20} color="#9CA3AF" />
-        </TouchableOpacity>
-        <View style={styles.divider} />
-
-        <TouchableOpacity style={styles.settingItem} onPress={handleSwitchToInstructor}>
-          <View style={styles.settingLeft}>
-            <Building size={20} color="#6B7280" />
-            <Text style={styles.settingText}>{t('profile.switchToInstructor')}</Text>
-          </View>
-          <ChevronRight size={20} color="#9CA3AF" />
-        </TouchableOpacity>
-        <View style={styles.divider} />
-
-        <View style={styles.settingsList}>
-          <TouchableOpacity style={styles.settingItem} onPress={handleNotifications}>
-            <View style={styles.settingLeft}>
-              <Bell size={20} color="#6B7280" />
-              <Text style={styles.settingText}>{t('profile.notifications')}</Text>
-            </View>
+          {/* Language Setting */}
+          <TouchableOpacity style={styles.settingItem} onPress={handleLanguageSettings}>
+            <View style={styles.settingLeft}><Languages size={20} color="#6B7280" /><Text style={styles.settingText}>{t('profile.changeLanguage')}</Text></View>
             <ChevronRight size={20} color="#9CA3AF" />
           </TouchableOpacity>
           <View style={styles.divider} />
-          <TouchableOpacity style={styles.settingItem} onPress={handlePrivacySecurity}>
-            <View style={styles.settingLeft}>
-              <Shield size={20} color="#6B7280" />
-              <Text style={styles.settingText}>{t('profile.privacy')}</Text>
-            </View>
+
+          <TouchableOpacity style={styles.settingItem} onPress={handleSwitchToInstructor}>
+            <View style={styles.settingLeft}><Building size={20} color="#6B7280" /><Text style={styles.settingText}>{t('profile.switchToInstructor')}</Text></View>
             <ChevronRight size={20} color="#9CA3AF" />
           </TouchableOpacity>
           <View style={styles.divider} />
-          <TouchableOpacity style={styles.settingItem} onPress={handleHelpSupport}>
-            <View style={styles.settingLeft}>
-              <HelpCircle size={20} color="#6B7280" />
-              <Text style={styles.settingText}>{t('profile.helpSupport')}</Text>
-            </View>
-            <ChevronRight size={20} color="#9CA3AF" />
-          </TouchableOpacity>
-          <View style={styles.divider} />
-          <TouchableOpacity style={styles.logoutItem} onPress={handleLogout}>
-            <LogOut size={20} color="#B03A2E" />
-            <Text style={styles.logoutText}>{t('auth.logout')}</Text>
-          </TouchableOpacity>
+
+          <View style={styles.settingsList}>
+            <TouchableOpacity style={styles.settingItem} onPress={handleNotifications}><View style={styles.settingLeft}><Bell size={20} color="#6B7280" /><Text style={styles.settingText}>{t('profile.notifications')}</Text></View><ChevronRight size={20} color="#9CA3AF" /></TouchableOpacity>
+            <View style={styles.divider} />
+            <TouchableOpacity style={styles.settingItem} onPress={handlePrivacySecurity}><View style={styles.settingLeft}><Shield size={20} color="#6B7280" /><Text style={styles.settingText}>{t('profile.privacy')}</Text></View><ChevronRight size={20} color="#9CA3AF" /></TouchableOpacity>
+            <View style={styles.divider} />
+            <TouchableOpacity style={styles.settingItem} onPress={handleHelpSupport}><View style={styles.settingLeft}><HelpCircle size={20} color="#6B7280" /><Text style={styles.settingText}>{t('profile.helpSupport')}</Text></View><ChevronRight size={20} color="#9CA3AF" /></TouchableOpacity>
+            <View style={styles.divider} />
+            <TouchableOpacity style={styles.logoutItem} onPress={handleLogout}><LogOut size={20} color="#B03A2E" /><Text style={styles.logoutText}>{t('auth.logout')}</Text></TouchableOpacity>
+          </View>
         </View>
-      </View>
 
-      {/* Footer */}
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>{t('profile.appVersion')}</Text>
-        <Text style={styles.footerText}>{t('profile.copyright')}</Text>
-      </View>
-    </ScrollView>
+        {/* Footer */}
+        <View style={styles.footer}><Text style={styles.footerText}>Safecert v{appVersion}</Text><Text style={styles.footerText}>{t('profile.copyright')}</Text></View>
+      </ScrollView>
 
-    {/* Edit Profile Modal */}
-    <CustomModal
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
-        title={t('profile.editProfile')}
-        onSave={handleSaveProfile}
-        onCancel={handleCancelEdit}
-        saveButtonText={t('common.save')}
-        cancelButtonText={t('common.cancel')}
-      >
-        <EditProfileForm 
-          formData={editForm}
-          onFormChange={handleFormChange}
-        />
-    </CustomModal>
+      {/* Edit Profile Modal */}
+      <CustomModal visible={modalVisible} onClose={() => setModalVisible(false)} title={t('profile.editProfile')} onSave={handleSaveProfile} onCancel={handleCancelEdit} saveButtonText={t('common.save')} cancelButtonText={t('common.cancel')}>
+        <EditProfileForm formData={editForm} onFormChange={handleFormChange} />
+      </CustomModal>
 
-    {/* Language Switcher Modal - NEW */}
-    <CustomModal
-        visible={languageModalVisible}
-        onClose={() => setLanguageModalVisible(false)}
-        title={t('profile.changeLanguage')}
-        hideButtons={true}
-      >
+      {/* Language Switcher Modal */}
+      <CustomModal visible={languageModalVisible} onClose={() => setLanguageModalVisible(false)} title={t('profile.changeLanguage')} hideButtons={true}>
         <LanguageSwitcher />
-        <TouchableOpacity 
-          style={styles.closeLanguageButton} 
-          onPress={() => setLanguageModalVisible(false)}
-        >
+        <TouchableOpacity style={styles.closeLanguageButton} onPress={() => setLanguageModalVisible(false)}>
           <Text style={styles.closeLanguageButtonText}>{t('common.done')}</Text>
         </TouchableOpacity>
-    </CustomModal>
+      </CustomModal>
     </>
   );
 }
@@ -622,6 +503,7 @@ const styles = StyleSheet.create({
   footer: {
     alignItems: 'center',
     marginTop: 18,
+    marginBottom: 28,
   },
   footerText: {
     fontSize: 12,
@@ -638,5 +520,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  progressBarBackground: {
+    height: 8,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 4,
+    marginTop: 4,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: 8,
+    backgroundColor: '#FF6B35',
+    borderRadius: 4,
   },
 });
