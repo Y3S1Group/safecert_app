@@ -1,13 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Check, Download } from 'lucide-react-native';
+import { ArrowLeft, Check, CheckCircle, Download } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/config/firebaseConfig';
 import { PDFDocument, PageSizes, rgb, StandardFonts } from 'pdf-lib';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { Asset } from 'expo-asset';
+import { Platform } from 'react-native';
+import { useAlert } from '@/contexts/AlertContext';
+import { useSnackbar } from '@/contexts/SnackbarContext';
+
 
 const safecertLogo = require('@/assets/images/SafeCert.png');
 
@@ -17,6 +22,7 @@ interface Template {
   courseDescription: string;
   instructorName: string;
   instructorTitle: string;
+  signatureUrl: string; // NEW: Signature URL
   organizationName: string;
   logoUrl: string;
   completionDate: string;
@@ -44,6 +50,8 @@ export default function GenerateCertificate() {
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationComplete, setGenerationComplete] = useState(false);
+  const { showAlert } = useAlert();
+  const { showSnackbar } = useSnackbar();
 
   // Fetch current user name
   useEffect(() => {
@@ -119,6 +127,7 @@ export default function GenerateCertificate() {
               courseDescription: templateDoc.data().courseDescription || '',
               instructorName: templateDoc.data().instructorName || '',
               instructorTitle: templateDoc.data().instructorTitle || '',
+              signatureUrl: templateDoc.data().signatureUrl || '', // NEW: Load signature
               organizationName: templateDoc.data().organizationName || '',
               logoUrl: templateDoc.data().logoUrl || '',
               completionDate: templateDoc.data().completionDate || new Date().toISOString(),
@@ -414,11 +423,43 @@ export default function GenerateCertificate() {
       const instructorTitle = template.instructorTitle || 'Instructor';
       
       console.log('Instructor:', instructorName, '|', instructorTitle);
+      console.log('Signature URL:', template.signatureUrl);
       
       if (instructorName) {
         const signatureLineY = currentY;
         const signatureLineLength = 150;
         const signatureX = (width - signatureLineLength) / 2;
+        
+        // NEW: Draw signature image if available
+        if (template.signatureUrl) {
+          try {
+            console.log('Loading signature image from:', template.signatureUrl);
+            const signatureBytes = await fetchImageBytes(template.signatureUrl);
+            const signatureImageType = getImageType(template.signatureUrl);
+            
+            const signatureImage = signatureImageType === 'png' 
+              ? await pdfDoc.embedPng(signatureBytes)
+              : await pdfDoc.embedJpg(signatureBytes);
+            
+            // Position signature image above the line
+            const signatureWidth = 120; // Fixed width for signature
+            const signatureHeight = (signatureWidth / signatureImage.width) * signatureImage.height;
+            const signatureImageX = (width - signatureWidth) / 2;
+            const signatureImageY = signatureLineY + 10; // 10 points above the line
+            
+            page.drawImage(signatureImage, {
+              x: signatureImageX,
+              y: signatureImageY,
+              width: signatureWidth,
+              height: signatureHeight,
+            });
+            
+            console.log('✅ Signature image added to certificate');
+          } catch (error) {
+            console.error('Error loading signature image:', error);
+            // Continue without signature image
+          }
+        }
         
         // Signature line
         page.drawLine({ 
@@ -465,28 +506,60 @@ export default function GenerateCertificate() {
         color: rgb(0.5, 0.5, 0.5) 
       });
 
-      console.log('Preparing to share PDF...');
+      // ✅ FIXED FILE WRITING SECTION - Using LEGACY API (officially supported for SDK 54)
+      // Generate PDF bytes
       const pdfBytes = await pdfDoc.save();
+      console.log('PDF bytes generated, length:', pdfBytes.length);
 
-      // Convert to base64 string
-      const base64Pdf = uint8ArrayToBase64(pdfBytes);
+      // Create a proper file name with timestamp to avoid conflicts
+      const fileName = `certificate_${receiverName.replace(/\s+/g, '_')}_${Date.now()}.pdf`;
+      
+      // Use cacheDirectory from legacy API
+      const fileUri = `${FileSystem.cacheDirectory}${fileName}`;
+      
+      console.log('Cache directory:', FileSystem.cacheDirectory);
+      console.log('Attempting to write PDF to:', fileUri);
 
-      if (await Sharing.isAvailableAsync()) {
-        console.log('Sharing PDF directly...');
-        await Sharing.shareAsync(`data:application/pdf;base64,${base64Pdf}`, {
+      // Convert Uint8Array to base64 string
+      const base64Data = uint8ArrayToBase64(pdfBytes);
+
+      // Write the PDF file using legacy API
+      await FileSystem.writeAsStringAsync(fileUri, base64Data, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      console.log('✅ PDF written successfully at:', fileUri);
+
+      // Share the file
+      const canShare = await Sharing.isAvailableAsync();
+      console.log('Sharing available:', canShare);
+      
+      if (canShare) {
+        await Sharing.shareAsync(fileUri, {
           mimeType: 'application/pdf',
           dialogTitle: 'Share Certificate',
+          UTI: 'com.adobe.pdf',
         });
+        console.log('✅ PDF shared successfully');
+        setGenerationComplete(true);
       } else {
-        Alert.alert('Info', 'Sharing is not available on this device.');
+        // Alert.alert('Success', `Certificate saved successfully!`);
+        showAlert({
+        message: 'Certificate saved successfully!',
+        icon: CheckCircle,
+        iconColor: '#10B981',
+        iconBgColor: '#D1FAE5',
+        autoClose: true,
+        autoCloseDelay: 2000
+      });
+        setGenerationComplete(true);
       }
-
-      setGenerationComplete(true);
 
     } catch (err) {
       console.error('❌ Error generating certificate:', err);
       console.error('Error stack:', err);
-      Alert.alert('Error', 'Failed to generate certificate. Please try again.');
+      // Alert.alert('Error', 'Failed to generate certificate. Please try again.');
+      showSnackbar({ message: 'Failed to generate certificate. Please try again.', type: 'error' });
     } finally {
       setIsGenerating(false);
       console.log('Generation complete, isGenerating set to false');
