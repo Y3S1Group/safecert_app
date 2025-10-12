@@ -1,19 +1,19 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Camera, Check, X } from 'lucide-react-native';
+import { ArrowLeft, Camera, Check, X, FileSignature } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { collection, addDoc, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/config/firebaseConfig';
 import { uploadMultipleImages } from '@/config/cloudinaryConfig';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import Stepper from '@/components/stepper';
-import { useLanguage } from '@/providers/languageContext'; // New
+import { useLanguage } from '@/providers/languageContext';
 
 export default function CreateCertificate() {
   const router = useRouter();
-  const { t } = useLanguage(); // New
-  const params = useLocalSearchParams<{courseId: string}>(); // gets courseId from previous step
+  const { t } = useLanguage();
+  const params = useLocalSearchParams<{courseId: string}>();
   const courseId = params.courseId;
 
   // Course info pre-filled
@@ -23,6 +23,7 @@ export default function CreateCertificate() {
   // Instructor info
   const [instructorName, setInstructorName] = useState('');
   const [instructorTitle, setInstructorTitle] = useState('');
+  const [signatureUrl, setSignatureUrl] = useState(''); // NEW: Signature
 
   // Organization info
   const [organizationName, setOrganizationName] = useState('');
@@ -50,7 +51,7 @@ export default function CreateCertificate() {
     fetchCourse();
   }, [courseId]);
 
-  // Pick image from gallery
+  // Pick logo from gallery
   const pickLogo = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -81,6 +82,37 @@ export default function CreateCertificate() {
     }
   };
 
+  // NEW: Pick signature from gallery
+  const pickSignature = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [3, 1], // Wider aspect ratio for signatures
+        quality: 1,
+      });
+
+      if (!result.canceled) {
+        const uri = result.assets[0].uri;
+        await uploadSignature(uri);
+      }
+    } catch (error) {
+      console.error("Error picking signature:", error);
+      Alert.alert(t('common.error'), 'Failed to pick signature image');
+    }
+  };
+
+  const uploadSignature = async (uri: string) => {
+    try {
+      const uploaded: string[] = await uploadMultipleImages([uri]);
+      setSignatureUrl(uploaded[0]);
+      Alert.alert(t('common.success'), 'Signature uploaded successfully');
+    } catch (error) {
+      console.error("Signature upload failed:", error);
+      Alert.alert(t('common.error'), 'Failed to upload signature');
+    }
+  };
+
   const handleSaveTemplate = async () => {
     if (!courseName || !instructorName) {
       Alert.alert(t('common.error'), t('createCertificate.requiredFields'));
@@ -88,13 +120,14 @@ export default function CreateCertificate() {
     }
 
     try {
-      // 1️⃣ Save template
+      // 1️⃣ Save template with signature
       const templateRef = await addDoc(collection(db, "certificateTemplates"), {
         courseId,
         courseName,
         courseDescription,
         instructorName,
         instructorTitle,
+        signatureUrl, // NEW: Save signature URL
         organizationName,
         logoUrl,
         primaryColor,
@@ -182,6 +215,23 @@ export default function CreateCertificate() {
           value={instructorTitle}
           onChangeText={setInstructorTitle}
         />
+
+        {/* NEW: Instructor Signature */}
+        <Text style={styles.label}>Instructor Signature</Text>
+        {signatureUrl ? (
+          <View style={styles.signatureContainer}>
+            <Image source={{ uri: signatureUrl }} style={styles.signaturePreview} resizeMode="contain" />
+            <TouchableOpacity style={styles.removeButton} onPress={() => setSignatureUrl('')}>
+              <X size={16} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity style={styles.uploadButton} onPress={pickSignature}>
+            <FileSignature size={20} color="#6B21A8" />
+            <Text style={styles.uploadTextSignature}>Upload Signature</Text>
+          </TouchableOpacity>
+        )}
+        <Text style={styles.helperText}>Upload a transparent PNG of the instructor's signature</Text>
 
         {/* Organization */}
         <Text style={styles.sectionTitle}>{t('createCertificate.organizationDetails')}</Text>
@@ -294,6 +344,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     marginTop: 4,
   },
+  helperText: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginTop: 6,
+    marginBottom: 8,
+    fontStyle: 'italic',
+  },
   input: { 
     backgroundColor: '#F9FAFB',
     borderRadius: 12,
@@ -317,12 +374,17 @@ const styles = StyleSheet.create({
     borderColor: "#FF6B35", 
     borderRadius: 10,
     padding: 12,
-    marginBottom: 16, 
+    marginBottom: 8, 
     backgroundColor: "#FFF5F2",
     gap: 8,
   },
   uploadText: { 
     color: "#FF6B35", 
+    fontWeight: "600", 
+    fontSize: 14 
+  },
+  uploadTextSignature: { 
+    color: "#6B21A8", 
     fontWeight: "600", 
     fontSize: 14 
   },
@@ -342,6 +404,28 @@ const styles = StyleSheet.create({
     position: "absolute", 
     top: -8, 
     right: "35%", 
+    backgroundColor: "#EF4444", 
+    borderRadius: 12, 
+    padding: 4 
+  },
+  signatureContainer: { 
+    alignItems: "center", 
+    marginBottom: 8, 
+    position: "relative",
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    padding: 12,
+  },
+  signaturePreview: { 
+    width: '100%', 
+    height: 80,
+  },
+  removeButton: { 
+    position: "absolute", 
+    top: 4, 
+    right: 4, 
     backgroundColor: "#EF4444", 
     borderRadius: 12, 
     padding: 4 

@@ -6,9 +6,10 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/config/firebaseConfig';
 import { PDFDocument, PageSizes, rgb, StandardFonts } from 'pdf-lib';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { Asset } from 'expo-asset';
+import { Platform } from 'react-native';
 
 const safecertLogo = require('@/assets/images/SafeCert.png');
 
@@ -18,6 +19,7 @@ interface Template {
   courseDescription: string;
   instructorName: string;
   instructorTitle: string;
+  signatureUrl: string; // NEW: Signature URL
   organizationName: string;
   logoUrl: string;
   completionDate: string;
@@ -120,6 +122,7 @@ export default function GenerateCertificate() {
               courseDescription: templateDoc.data().courseDescription || '',
               instructorName: templateDoc.data().instructorName || '',
               instructorTitle: templateDoc.data().instructorTitle || '',
+              signatureUrl: templateDoc.data().signatureUrl || '', // NEW: Load signature
               organizationName: templateDoc.data().organizationName || '',
               logoUrl: templateDoc.data().logoUrl || '',
               completionDate: templateDoc.data().completionDate || new Date().toISOString(),
@@ -415,11 +418,43 @@ export default function GenerateCertificate() {
       const instructorTitle = template.instructorTitle || 'Instructor';
       
       console.log('Instructor:', instructorName, '|', instructorTitle);
+      console.log('Signature URL:', template.signatureUrl);
       
       if (instructorName) {
         const signatureLineY = currentY;
         const signatureLineLength = 150;
         const signatureX = (width - signatureLineLength) / 2;
+        
+        // NEW: Draw signature image if available
+        if (template.signatureUrl) {
+          try {
+            console.log('Loading signature image from:', template.signatureUrl);
+            const signatureBytes = await fetchImageBytes(template.signatureUrl);
+            const signatureImageType = getImageType(template.signatureUrl);
+            
+            const signatureImage = signatureImageType === 'png' 
+              ? await pdfDoc.embedPng(signatureBytes)
+              : await pdfDoc.embedJpg(signatureBytes);
+            
+            // Position signature image above the line
+            const signatureWidth = 120; // Fixed width for signature
+            const signatureHeight = (signatureWidth / signatureImage.width) * signatureImage.height;
+            const signatureImageX = (width - signatureWidth) / 2;
+            const signatureImageY = signatureLineY + 10; // 10 points above the line
+            
+            page.drawImage(signatureImage, {
+              x: signatureImageX,
+              y: signatureImageY,
+              width: signatureWidth,
+              height: signatureHeight,
+            });
+            
+            console.log('✅ Signature image added to certificate');
+          } catch (error) {
+            console.error('Error loading signature image:', error);
+            // Continue without signature image
+          }
+        }
         
         // Signature line
         page.drawLine({ 
@@ -466,26 +501,47 @@ export default function GenerateCertificate() {
         color: rgb(0.5, 0.5, 0.5) 
       });
 
-      console.log('Saving PDF...');
-      // Save and share
+      // ✅ FIXED FILE WRITING SECTION - Using LEGACY API (officially supported for SDK 54)
+      // Generate PDF bytes
       const pdfBytes = await pdfDoc.save();
-      const filePath = `${FileSystem.documentDirectory}certificate_${receiverName.replace(/\s+/g, '_')}.pdf`;
-      await FileSystem.writeAsStringAsync(filePath, uint8ArrayToBase64(pdfBytes), { 
-        encoding: 'base64' 
+      console.log('PDF bytes generated, length:', pdfBytes.length);
+
+      // Create a proper file name with timestamp to avoid conflicts
+      const fileName = `certificate_${receiverName.replace(/\s+/g, '_')}_${Date.now()}.pdf`;
+      
+      // Use cacheDirectory from legacy API
+      const fileUri = `${FileSystem.cacheDirectory}${fileName}`;
+      
+      console.log('Cache directory:', FileSystem.cacheDirectory);
+      console.log('Attempting to write PDF to:', fileUri);
+
+      // Convert Uint8Array to base64 string
+      const base64Data = uint8ArrayToBase64(pdfBytes);
+
+      // Write the PDF file using legacy API
+      await FileSystem.writeAsStringAsync(fileUri, base64Data, {
+        encoding: FileSystem.EncodingType.Base64,
       });
 
-      console.log('✅ PDF saved to:', filePath);
-      setGenerationComplete(true);
+      console.log('✅ PDF written successfully at:', fileUri);
 
-      if (await Sharing.isAvailableAsync()) {
-        console.log('Sharing PDF...');
-        await Sharing.shareAsync(filePath, { 
-          mimeType: 'application/pdf', 
-          dialogTitle: 'Share Certificate' 
+      // Share the file
+      const canShare = await Sharing.isAvailableAsync();
+      console.log('Sharing available:', canShare);
+      
+      if (canShare) {
+        await Sharing.shareAsync(fileUri, {
+          mimeType: 'application/pdf',
+          dialogTitle: 'Share Certificate',
+          UTI: 'com.adobe.pdf',
         });
+        console.log('✅ PDF shared successfully');
+        setGenerationComplete(true);
       } else {
-        Alert.alert('Success', `Certificate saved: ${filePath}`);
+        Alert.alert('Success', `Certificate saved successfully!`);
+        setGenerationComplete(true);
       }
+
     } catch (err) {
       console.error('❌ Error generating certificate:', err);
       console.error('Error stack:', err);
