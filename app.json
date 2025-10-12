@@ -2,14 +2,14 @@
   "expo": {
     "name": "Safe Cert",
     "slug": "Safecert",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/images/safecertLogo.png",
     "scheme": "safecertapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/splash-screen.png",
+      "image": "./assets/images/splash-screen2.png",
       "resizeMode": "cover",
       "backgroundColor": "#ffffff"
     },
@@ -17,17 +17,20 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.yourcompany.safecert",
       "splash": {
-        "image": "./assets/images/splash-screen.png",
+        "image": "./assets/images/splash-screen2.png",
         "resizeMode": "cover",
         "backgroundColor": "#ffffff",
         "dark": {
           "backgroundColor": "#ffffff"
         }
+      },
+      "statusBar": {
+        "barStyle": "light-content" 
       }
     },
     "android": {
       "package": "com.yourcompany.safecert",
-      "versionCode": 3,
+      "versionCode": 4,
       "adaptiveIcon": {
         "backgroundColor": "#ffffff",
         "foregroundImage": "./assets/images/safecertLogo.png"
@@ -43,7 +46,7 @@
         "RECORD_AUDIO"
       ],
       "splash": {
-        "image": "./assets/images/splash-screen.png",
+        "image": "./assets/images/splash-screen2.png",
         "resizeMode": "cover",
         "backgroundColor": "#ffffff",
         "dark": {
@@ -53,6 +56,11 @@
       "edgeToEdgeEnabled": false,
       "predictiveBackGestureEnabled": false
     },
+    "statusBar": {
+        "backgroundColor": "#FF6B35", 
+        "barStyle": "light-content", 
+        "translucent": false        
+      },
     "web": {
       "output": "static",
       "favicon": "./assets/images/safecertLogo.png"
@@ -62,7 +70,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-screen.png",
+          "image": "./assets/images/splash-screen2.png",
           "resizeMode": "cover",
           "backgroundColor": "#ffffff",
           "dark": {

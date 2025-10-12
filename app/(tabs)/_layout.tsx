@@ -19,7 +19,7 @@ export default function TabLayout() {
                     borderTopWidth: 0,
                     borderRadius: 25,
                     marginHorizontal: 5,
-                    marginBottom: Platform.OS === 'ios' ? 12 : 6,
+                    marginBottom: Platform.OS === 'ios' ? 10 : 4,
                     paddingBottom: insets.bottom > 0 ? insets.bottom : 10, 
                     paddingTop: 8,
                     height: 60 + (insets.bottom > 0 ? insets.bottom : 10),
