@@ -30,7 +30,7 @@
       "versionCode": 6,
       "adaptiveIcon": {
         "backgroundColor": "#ffffff",
-        "foregroundImage": "./assets/images/safecertLogo.png"
+        "foregroundImage": "./assets/images/adaptive-icon.png"
       },
       "permissions": [
         "CAMERA",
