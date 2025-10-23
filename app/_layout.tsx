@@ -108,7 +108,7 @@ export default function RootLayout() {
       <OnboardingContext.Provider value={{ completeOnboarding }}>
         <AlertProvider>
           <SnackbarProvider>
-            <StatusBar style='auto' backgroundColor="#FF6B35" />
+            <StatusBar style='auto' backgroundColor="#ff8a37ff" />
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="(onboarding)" />
               <Stack.Screen name="(auth)" />

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Safe Cert",
     "slug": "Safecert",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "orientation": "portrait",
     "icon": "./assets/images/safecertLogo.png",
     "scheme": "safecertapp",
@@ -10,7 +10,7 @@
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/splash-screen2.png",
-      "resizeMode": "contain",
+      "resizeMode": "cover",
       "backgroundColor": "#ffffff"
     },
     "ios": {
@@ -18,7 +18,7 @@
       "bundleIdentifier": "com.yourcompany.safecert",
       "splash": {
         "image": "./assets/images/splash-screen2.png",
-        "resizeMode": "contain",
+        "resizeMode": "cover",
         "backgroundColor": "#ffffff",
         "dark": {
           "backgroundColor": "#ffffff"
@@ -27,7 +27,7 @@
     },
     "android": {
       "package": "com.yourcompany.safecert",
-      "versionCode": 5,
+      "versionCode": 6,
       "adaptiveIcon": {
         "backgroundColor": "#ffffff",
         "foregroundImage": "./assets/images/safecertLogo.png"
@@ -44,7 +44,7 @@
       ],
       "splash": {
         "image": "./assets/images/splash-screen2.png",
-        "resizeMode": "contain",
+        "resizeMode": "cover",
         "backgroundColor": "#ffffff",
         "dark": {
           "backgroundColor": "#ffffff"
@@ -63,7 +63,7 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-screen2.png",
-          "resizeMode": "contain",
+          "resizeMode": "cover",
           "backgroundColor": "#ffffff",
           "dark": {
             "backgroundColor": "#ffffff"
