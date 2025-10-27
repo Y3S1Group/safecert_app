@@ -207,6 +207,15 @@ export default function CreateCourse() {
       }
 
       // Update course document with subtopics
+      setUploadProgress(t('createCourse.progress.saving'));
+      await updateDoc(doc(db, 'courses', courseRef.id), {
+        subtopics: uploadedSubtopics,
+        subtopicsCount: uploadedSubtopics.length,
+        updatedAt: serverTimestamp()
+      });
+      console.log('Course updated with subtopics and PDFs');
+      console.log('Uploaded subtopics:', uploadedSubtopics);
+
       // Send notifications to all users
       setUploadProgress(t('createCourse.progress.notifying'));
       try {

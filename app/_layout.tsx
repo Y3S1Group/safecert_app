@@ -92,7 +92,6 @@ export default function RootLayout() {
 
   const onLayoutRootView = useCallback(async () => {
     if (appIsReady && isFirstLaunch !== null) {
-      // Hide the splash screen
       await SplashScreen.hideAsync();
     }
   }, [appIsReady, isFirstLaunch]);

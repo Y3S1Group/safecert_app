@@ -2,23 +2,23 @@
   "expo": {
     "name": "Safe Cert",
     "slug": "Safecert",
-    "version": "1.0.5",
+    "version": "1.0.8",
     "orientation": "portrait",
-    "icon": "./assets/images/adaptive-icon.png",
+    "icon": "./assets/images/app-logo1.png",
     "scheme": "safecertapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/splash-screen2.png",
-      "resizeMode": "cover",
+      "image": "./assets/images/splash-logo2.png",
+      "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.yourcompany.safecert",
       "splash": {
-        "image": "./assets/images/splash-screen2.png",
-        "resizeMode": "cover",
+        "image": "./assets/images/splash-logo2.png",
+        "resizeMode": "contain",
         "backgroundColor": "#ffffff",
         "dark": {
           "backgroundColor": "#ffffff"
@@ -27,10 +27,10 @@
     },
     "android": {
       "package": "com.yourcompany.safecert",
-      "versionCode": 6,
+      "versionCode": 8,
       "adaptiveIcon": {
         "backgroundColor": "#ffffff",
-        "foregroundImage": "./assets/images/adaptive-icon.png"
+        "foregroundImage": "./assets/images/app-icon.png"
       },
       "permissions": [
         "CAMERA",
@@ -43,8 +43,8 @@
         "RECORD_AUDIO"
       ],
       "splash": {
-        "image": "./assets/images/splash-screen2.png",
-        "resizeMode": "cover",
+        "image": "./assets/images/splash-icon2.png",
+        "resizeMode": "contain",
         "backgroundColor": "#ffffff",
         "dark": {
           "backgroundColor": "#ffffff"
@@ -55,19 +55,20 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/safecertLogo.png"
+      "favicon": "./assets/images/app-icon.png"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-screen2.png",
-          "resizeMode": "cover",
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#FFFFFF",
+          "image": "./assets/images/splash-icon2.png",
           "dark": {
-            "backgroundColor": "#ffffff"
-          }
+            "image": "./assets/images/splash-icon2.png",
+            "backgroundColor": "#FFFFFF"
+          },
+          "imageWidth": 400
         }
       ],
       "expo-web-browser",
