@@ -244,13 +244,13 @@ export default function CreateIncident() {
       setLocation(formattedAddress)
 
       showSnackbar({
-        message: '✅ GPS location detected successfully',
+        message: 'GPS location detected successfully',
         type: 'success',
         duration: 2000
       })
 
     } catch (error: any) {
-      console.error('❌ Error getting GPS location:', error)
+      console.error('Error getting GPS location:', error)
 
       let errorMessage = t('createIncident.errors.gpsLocation')
 

@@ -210,7 +210,8 @@
     "helpSupport": "උදව් & සහාය",
     "appVersion": "Safe Cert v1.0.0",
     "copyright": "© 2025 Safety First Inc.",
-    "jobTitle": "රැකියා තනතුර"
+    "jobTitle": "රැකියා තනතුර",
+    "switchSuccess": "සාර්ථකව මාරු විය"
   },
   "instructorDash": {
     "title": "ගුරු උපකරණ පුවරුව",
@@ -585,9 +586,17 @@
     }
   },
   "notifications": {
-    "JustNow": "දැන්ම",
     "title": "දැනුම්දීම්",
-    "noNotifications": "දැනුම්දීම් නොමැත",
-    "allCaughtUp": "ඔබ සියල්ල සම්පූර්ණ කර ඇත!"
+    "noNotifications": "දැනුම්දීම් නැත",
+    "allCaughtUp": "ඔබ සියල්ල කියවා ඇත!",
+    "justNow": "මේ දැන්",
+    "markAllRead": "සියල්ල කියවූ ලෙස සලකුණු කරන්න",
+    "deleteAll": "සියල්ල මකන්න",
+    "deleteAllConfirm": "ඔබට සියලු දැනුම්දීම් මකා දැමීමට අවශ්‍යද? මෙය අහෝසි කළ නොහැක.",
+    "markedAllAsRead": "සියලු දැනුම්දීම් කියවූ ලෙස සලකුණු කරන ලදී",
+    "deletedAll": "සියලු දැනුම්දීම් මකා දමන ලදී",
+    "noUnreadMessages": "නොකියවූ දැනුම්දීම් නැත",
+    "markAllError": "සියල්ල කියවූ ලෙස සලකුණු කිරීමට අසමත් විය",
+    "deleteAllError": "සියලු දැනුම්දීම් මකා දැමීමට අසමත් විය"
   }
 }

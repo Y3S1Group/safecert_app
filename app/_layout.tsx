@@ -92,7 +92,6 @@ export default function RootLayout() {
 
   const onLayoutRootView = useCallback(async () => {
     if (appIsReady && isFirstLaunch !== null) {
-      // Hide the splash screen
       await SplashScreen.hideAsync();
     }
   }, [appIsReady, isFirstLaunch]);
@@ -108,7 +107,7 @@ export default function RootLayout() {
       <OnboardingContext.Provider value={{ completeOnboarding }}>
         <AlertProvider>
           <SnackbarProvider>
-            <StatusBar style='inverted' />
+            <StatusBar style='auto' backgroundColor="#ff8a37ff" />
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="(onboarding)" />
               <Stack.Screen name="(auth)" />

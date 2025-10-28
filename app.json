@@ -2,60 +2,73 @@
   "expo": {
     "name": "Safe Cert",
     "slug": "Safecert",
-    "version": "1.0.0",
+    "version": "1.0.8",
     "orientation": "portrait",
-    "icon": "./assets/images/safecertLogo.png",
+    "icon": "./assets/images/app-logo1.png",
     "scheme": "safecertapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/safecertLogo.png",
+      "image": "./assets/images/splash-logo2.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.yourcompany.safecert",
       "splash": {
-        "image": "./assets/images/safecertLogo.png",
+        "image": "./assets/images/splash-logo2.png",
         "resizeMode": "contain",
         "backgroundColor": "#ffffff",
         "dark": {
-          "backgroundColor": "#000000"
+          "backgroundColor": "#ffffff"
         }
       }
     },
     "android": {
+      "package": "com.yourcompany.safecert",
+      "versionCode": 8,
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/safecertLogo.png"
+        "backgroundColor": "#ffffff",
+        "foregroundImage": "./assets/images/app-icon.png"
       },
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES",
+        "READ_MEDIA_VIDEO",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "RECORD_AUDIO"
+      ],
       "splash": {
-        "image": "./assets/images/safecertLogo.png",
+        "image": "./assets/images/splash-icon2.png",
         "resizeMode": "contain",
         "backgroundColor": "#ffffff",
         "dark": {
-          "backgroundColor": "#000000"
+          "backgroundColor": "#ffffff"
         }
       },
-      "edgeToEdgeEnabled": true,
+      "edgeToEdgeEnabled": false,
       "predictiveBackGestureEnabled": false
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/safecertLogo.png"
+      "favicon": "./assets/images/app-icon.png"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/safecertLogo.png",
-          "imageWidth": 60,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#FFFFFF",
+          "image": "./assets/images/splash-icon2.png",
           "dark": {
-            "backgroundColor": "#000000"
-          }
+            "image": "./assets/images/splash-icon2.png",
+            "backgroundColor": "#FFFFFF"
+          },
+          "imageWidth": 400
         }
       ],
       "expo-web-browser",
@@ -64,6 +77,15 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "a84456e8-91af-4027-a224-125cc5a5de47"
+      }
     }
   }
 }
