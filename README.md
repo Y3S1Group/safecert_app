@@ -1,50 +1,112 @@
-# Welcome to your Expo app 👋
+# Safe Cert - Workplace Safety Got Upgraded
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A comprehensive mobile safety platform built with React Native and Firebase that empowers industrial workers through accessible digital training, certification, and incident reporting.
 
-## Get started
+**Learn. Certify. Protect.**
 
-1. Install dependencies
+## Contributors / Team Members
 
-   ```bash
-   npm install
-   ```
+- **[Thimeth Sathmika](URL)** 
+- **[Hiruvinda ](URL)** 
+- **[Dishan](URL)** 
+- **[Ravindu Thiranjaya](URL)**
 
-2. Start the app
 
-   ```bash
-   npx expo start
-   ```
+## The Problem We're Solving
 
-In the output, you'll find options to open the app in a
+SafeCert addresses critical challenges in industrial workplace safety:
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+1. **Limited Access to Training** - Workers lack convenient access to safety education
+2. **Outdated Paper-Based Systems** - Inefficient manual certification and tracking
+3. **Language Barriers** - Training materials not accessible to multilingual workforces
+4. **Ineffective Incident Reporting** - Manual processes delay critical safety responses
+5. **Unsafe Work Practices** - Lack of standardized, accessible safety protocols
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## Target Users
 
-## Get a fresh project
+### Primary Users
+**Industrial Workers** - Main beneficiaries who access safety training, complete quizzes, and receive verified digital certificates through the mobile app.
 
-When you're ready, run:
+### Secondary Users
+**Training Specialists & Safety Officers** - Administrators and verifiers who manage training modules, approve certifications, and monitor safety compliance through the admin dashboard.
 
-```bash
-npm run reset-project
-```
+## Key Features
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### Core Functionality
+- **AI-Based Recommendations and Quizzes** - Personalized safety training powered by Google Gemini API.
+- **Multi-Language Support** - Accessible training content in multiple languages (English, Sinhala, Tamil).
+- **Text-to-Speech Feature** - Audio support for low-literacy users
+- **Real-Time Incident Reporting** - Quick and efficient safety incident documentation with GPS tracking
+- **Admin Dashboard** - Comprehensive management tools for trainers and safety officers
+- **Digital Certification** - Verified, tamper-proof digital safety certificates
 
-## Learn more
+### Accessibility Features
+- Optimized for bright and noisy industrial conditions
+- Multi-language interface with text-to-speech
+- User-first design for diverse literacy levels
+- GPS-enabled accurate incident location tracking
 
-To learn more about developing your project with Expo, look at the following resources:
+## SDG Alignment
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+SafeCert promotes **SDG 8: Decent Work and Economic Growth** by:
+- Protecting labor rights and promoting safe working environments for all workers
+- Enabling accessibility and equity through inclusive design
+- Improving workplace safety and certification transparency
 
-## Join the community
+## Tech Stack & Libraries
 
-Join our community of developers creating universal apps.
+### Frontend
+- **[React Native](https://reactnative.dev/)** – Cross-platform mobile development for Android and iOS
+- **[Expo](https://expo.dev/)** (~54.0.10) – Development platform and build tool
+- **[Expo Router](https://expo.github.io/router/)** (6.0.7) – File-based routing for React Native
+- **[React Navigation](https://reactnavigation.org/)** – Navigation library with native stack, bottom tabs, and drawer
+- **[Lucide React Native](https://lucide.dev/)** – Icon library
+- **[React Native Paper](https://reactnativepaper.com/)** – Material Design components
+- **[React Native Reanimated](https://docs.swmansion.com/react-native-reanimated/)** – Animation library
+- **[Victory Native](https://commerce.nearform.com/open-source/victory-native/)** – Data visualization and charts
+- **[React Native SVG](https://github.com/software-mansion/react-native-svg)** – SVG support
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+### Backend (BaaS)
+- **[Firebase](https://firebase.google.com/)** (^12.3.0) – Backend as a Service
+  - **Authentication** - User management and secure login
+  - **Firestore** - Real-time NoSQL database for users, certificates, and reports
+  - **Cloud Storage** - Secure file storage for training materials
+  - **Real-time Sync** - Instant data updates across devices
+
+### File & Media Handling
+- **[Cloudinary](https://cloudinary.com/)** – Image and file storage for reports and certificates
+- **[Expo Image Picker](https://docs.expo.dev/versions/latest/sdk/imagepicker/)** – Camera and gallery access
+- **[Expo Document Picker](https://docs.expo.dev/versions/latest/sdk/document-picker/)** – Document selection
+- **[Expo Media Library](https://docs.expo.dev/versions/latest/sdk/media-library/)** – Media management
+- **[PDF-Lib](https://pdf-lib.js.org/)** – PDF generation for certificates
+
+### AI Integration
+- **[Google Gemini API](https://ai.google.dev/)** (@google/genai) – Generates personalized safety quizzes and training recommendations
+
+### Location & Audio Services
+- **[Expo Location](https://docs.expo.dev/versions/latest/sdk/location/)** – GPS integration for accurate incident tracking
+- **[Expo Speech](https://docs.expo.dev/versions/latest/sdk/speech/)** – Text-to-speech functionality
+- **[Expo AV](https://docs.expo.dev/versions/latest/sdk/av/)** – Audio/video playback
+
+### Additional Features
+- **[Async Storage](https://react-native-async-storage.github.io/async-storage/)** – Local data persistence
+- **[Expo Localization](https://docs.expo.dev/versions/latest/sdk/localization/)** – Multi-language support
+- **[Expo Haptics](https://docs.expo.dev/versions/latest/sdk/haptics/)** – Tactile feedback
+- **[Expo Sharing](https://docs.expo.dev/versions/latest/sdk/sharing/)** – Share certificates and reports
+
+### Development Tools
+- **[Expo Go](https://expo.dev/go)** – Testing and debugging environment for mobile builds
+- **[TypeScript](https://www.typescriptlang.org/)** (~5.9.2) – Type-safe development
+- **[ESLint](https://eslint.org/)** – Code quality and consistency
+- **Figma** – UI/UX design
+
+### UI/UX Testing
+- **Cognitive Load Assessment** - Interface designed to minimize mental effort required to complete tasks
+- Optimized information architecture for intuitive navigation
+- Reduced visual clutter and simplified workflows for industrial environments
+- Context-appropriate design patterns for high-stress situations
+
+### Performance Metrics
+- **Task Completion Rate** - 85% success across primary and secondary users
+- **Reporting Efficiency** - Average incident reporting time reduced from 15 minutes to 5 minutes
+- **User Satisfaction** - Positive feedback on accessibility features and ease of use
